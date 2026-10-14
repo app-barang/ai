@@ -1,0 +1,209 @@
+// Prisma Schema - barangviral.store
+// E-Commerce + Platform Afiliasi AI
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===================== PENGGUNA =====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String?
+  image     String?
+  phone     String?
+  role      Role     @default(BUYER)
+  createdAt DateTime @default(now())
+
+  affiliate Affiliate?
+  orders    Order[]
+
+  // NextAuth
+  accounts  Account[]
+  sessions  Session[]
+
+  @@map("users")
+}
+
+enum Role {
+  BUYER
+  AFFILIATE
+  ADMIN
+}
+
+// ===================== AFILIATOR =====================
+
+model Affiliate {
+  id             String     @id @default(cuid())
+  userId         String     @unique
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username       String     @unique
+  tiktok         String?
+  instagram      String?
+  youtube        String?
+  followers      Int?
+  bankName       String?
+  bankAccount    String?
+  commissionRate Float      @default(0.30) // maksimum 0.50
+  totalEarnings  Float      @default(0)
+  balance        Float      @default(0)
+  status         AffStatus  @default(PENDING)
+  createdAt      DateTime   @default(now())
+
+  links       AffLink[]
+  withdrawals Withdrawal[]
+
+  @@map("affiliates")
+}
+
+enum AffStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+// ===================== PRODUK =====================
+
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String
+  price        Float
+  comparePrice Float?
+  images       String[]
+  category     String
+  rating       Float    @default(0)
+  sold         Int      @default(0)
+  stock        Int      @default(0)
+  isViral      Boolean  @default(false)
+  radarScore   Int      @default(0)
+  marketplace  String
+  externalUrl  String?
+  createdAt    DateTime @default(now())
+
+  affLinks AffLink[]
+  orders   Order[]
+
+  @@index([category])
+  @@index([isViral])
+  @@index([radarScore])
+  @@map("products")
+}
+
+// ===================== LINK AFILIASI =====================
+
+model AffLink {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shortCode   String    @unique
+  clicks      Int       @default(0)
+  conversions Int       @default(0)
+  earnings    Float     @default(0)
+  createdAt   DateTime  @default(now())
+
+  orders Order[]
+
+  @@index([affiliateId])
+  @@index([productId])
+  @@map("aff_links")
+}
+
+// ===================== PESANAN =====================
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  productId String
+  product   Product     @relation(fields: [productId], references: [id])
+  quantity  Int
+  total     Float
+  status    OrderStatus @default(PENDING)
+  affLinkId String?
+  affLink   AffLink?    @relation(fields: [affLinkId], references: [id])
+  createdAt DateTime    @default(now())
+
+  @@index([userId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+// ===================== PENGELUARAN WANG =====================
+
+model Withdrawal {
+  id          String         @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate      @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount      Float
+  method      String
+  status      WithdrawStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+
+  @@index([affiliateId])
+  @@map("withdrawals")
+}
+
+enum WithdrawStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ===================== MODELS NEXTAUTH =====================
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionToken])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}

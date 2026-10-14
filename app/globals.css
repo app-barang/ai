@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===================== CUSTOM PROPERTIES ===================== */
+:root {
+  --brand-gradient: linear-gradient(135deg, #ff6b00, #ff007a);
+}
+
+/* ===================== BASE ===================== */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-white font-body text-secondary antialiased;
+}
+
+::selection {
+  @apply bg-[#FF6B00]/20;
+}
+
+/* ===================== UTILITI ===================== */
+@layer utilities {
+  .container-custom {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--brand-gradient);
+  }
+
+  .bg-gradient-brand {
+    background-image: var(--brand-gradient);
+  }
+}
+
+/* ===================== KOMPONEN ===================== */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-brand px-6 py-3 font-heading font-semibold text-white shadow-glow transition-all duration-300 hover:scale-[1.02] hover:shadow-glow-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#FF6B00] bg-transparent px-6 py-3 font-heading font-semibold text-[#FF6B00] transition-all duration-300 hover:scale-[1.02] hover:bg-[#FF6B00] hover:text-white hover:shadow-glow focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/50 active:scale-[0.98];
+  }
+
+  .card-soft {
+    @apply rounded-2xl bg-white p-5 shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-soft-lg;
+  }
+}

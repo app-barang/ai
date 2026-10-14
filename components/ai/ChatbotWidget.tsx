@@ -1,0 +1,289 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from "lucide-react";
+import type { ChatMessage } from "@/types";
+import { cn } from "@/lib/utils";
+
+const quickPrompts = [
+  "Produk apa yang viral minggu ini?",
+  "Macam nak jana link afiliasi?",
+  "Berapa komisen yang saya dapat?",
+  "Cara tarik wang ke bank?",
+];
+
+export default function ChatbotWidget() {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content:
+        "Hai! 👋 Saya **Aiden**, pembantu AI BarangViral. Saya boleh bantu anda cari produk viral, jelaskan komisen afiliasi, atau bimbing jana link promosi. Apa yang boleh saya tolong?",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const [currentResponse, setCurrentResponse] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup on close
+  useEffect(() => {
+    return () => stopStreaming();
+  }, [open]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, currentResponse, streaming]);
+
+  const stopStreaming = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.cancel();
+      streamRef.current = null;
+    }
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setStreaming(false);
+    setCurrentResponse("");
+  }, []);
+
+  const send = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || streaming) return;
+
+    const userMsg: ChatMessage = { role: "user", content: trimmed };
+    setMessages((m) => [...m, userMsg]);
+    setInput("");
+    setStreaming(true);
+    setCurrentResponse("");
+
+    try {
+      abortControllerRef.current = new AbortController();
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMsg], context: "buyer" }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error("Failed to fetch stream");
+      }
+
+      const reader = res.body.getReader();
+      streamRef.current = reader;
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        setCurrentResponse(buffer);
+      }
+      setCurrentResponse("");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        // User closed chat during streaming - ignore
+        return;
+      }
+      console.error("[Chat Error]", error);
+      setMessages((m) => [...m, { role: "assistant", content: "Sambungan bermasalah. Sila cuba lagi." }]);
+    } finally {
+      setStreaming(false);
+      if (currentResponse) {
+        setMessages((m) => [...m, { role: "assistant", content: currentResponse }]);
+        setCurrentResponse("");
+      }
+    }
+  };
+
+  const handleClose = () => {
+    stopStreaming();
+    setOpen(false);
+  };
+
+  const renderMd = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((p, i) =>
+      p.startsWith("**") && p.endsWith("**") ? (
+        <strong key={i} className="font-semibold text-secondary">
+          {p.slice(2, -2)}
+        </strong>
+      ) : (
+        <span key={i}>{p}</span>
+      )
+    );
+  };
+
+  return (
+    <>
+      {/* Tombol buka */}
+      <motion.button
+        onClick={() => setOpen(true)}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 1.5, type: "spring" }}
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-glow-lg transition-transform hover:scale-110 md:bottom-6 md:right-6"
+        aria-label="Buka chatbot"
+      >
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+              <X className="h-6 w-6" />
+            </motion.span>
+          ) : (
+            <motion.span key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
+              <MessageCircle className="h-6 w-6" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+        {!open && (
+          <span className="absolute -right-1 -top-1 flex h-4 w-4">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-viral-pink opacity-75" />
+            <span className="relative inline-flex h-4 w-4 rounded-full border-2 border-white bg-viral-pink" />
+          </span>
+        )}
+      </motion.button>
+
+      {/* Balai chat */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25 }}
+            className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[560px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-soft-lg md:bottom-6 md:right-6"
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 bg-gradient-brand px-5 py-4">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
+                <Bot className="h-5 w-5 text-white" />
+              </span>
+              <div>
+                <p className="font-heading font-bold text-white">Aiden 🤖</p>
+                <p className="flex items-center gap-1.5 text-xs text-white/80">
+                  <span className="h-2 w-2 rounded-full bg-success" />
+                  Dalam talian • Streaming AI
+                </p>
+              </div>
+              <button
+                onClick={handleClose}
+                className="ml-auto rounded-lg p-1.5 text-white/80 hover:bg-white/20"
+                aria-label="Tutup"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Mesej */}
+            <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              {messages.map((m, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "flex gap-2",
+                    m.role === "user" ? "flex-row-reverse" : ""
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
+                      m.role === "assistant"
+                        ? "bg-gradient-brand text-white"
+                        : "bg-bgalt text-secondary"
+                    )}
+                  >
+                    {m.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                  </span>
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                      m.role === "assistant"
+                        ? "rounded-tl-sm border border-gray-100 bg-bgalt"
+                        : "rounded-tr-sm bg-gradient-brand text-white shadow-glow"
+                    )}
+                  >
+                    {renderMd(m.content)}
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Streaming response */}
+              {(streaming || currentResponse) && (
+                <motion.div
+                  key="streaming"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-2"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-brand text-white">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                  <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-gray-100 bg-bgalt px-4 py-2.5 text-sm leading-relaxed">
+                    {currentResponse && <span>{renderMd(currentResponse)}</span>}
+                    {streaming && (
+                      <span className="inline-flex items-center gap-1 ml-1">
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0ms]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:150ms]" />
+                        <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:300ms]" />
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Quick prompts */}
+            {messages.length === 1 && (
+              <div className="no-scrollbar flex gap-2 overflow-x-auto border-t border-gray-100 p-3">
+                {quickPrompts.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => send(p)}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-white"
+                  >
+                    <Sparkles className="h-3 w-3" /> {p}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Input */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                send(input);
+              }}
+              className="flex items-center gap-2 border-t border-gray-100 p-3"
+            >
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={streaming ? "AI sedang menaip..." : "Taip soalan..."}
+                disabled={streaming}
+                className="h-11 flex-1 rounded-xl border border-gray-200 bg-bgalt px-4 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || streaming}
+                className="btn-primary h-11 w-11 !rounded-xl !px-0"
+                aria-label={streaming ? "Menghentikan..." : "Hantar"}
+              >
+                {streaming ? <X className="h-5 w-5" /> : <Send className="h-5 w-5" />}
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
