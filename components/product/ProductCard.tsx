@@ -17,7 +17,7 @@ export default function ProductCard({ product, className }: Props) {
   return (
     <article
       className={cn(
-        "card-soft group overflow-hidden !p-0",
+        "card-soft group overflow-hidden !p-0 active:scale-[0.98] transition-transform",
         className
       )}
     >
@@ -59,7 +59,7 @@ export default function ProductCard({ product, className }: Props) {
       </div>
 
       {/* Isi */}
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 p-4 active:bg-bgalt/50">
         <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
           {product.marketplace}
         </span>

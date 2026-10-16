@@ -18,6 +18,7 @@
     "@auth/prisma-adapter": "^2.11.3",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^5.22.0",
+    "@vercel/analytics": "^2.0.1",
     "ai": "^7.0.140",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
@@ -29,6 +30,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
+    "sharp": "^0.35.5",
     "tailwind-merge": "^2.5.4",
     "zustand": "^5.0.0"
   },

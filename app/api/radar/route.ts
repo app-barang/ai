@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { openRouter, hasAI } from "@/lib/ai";
+import { groq, hasAI } from "@/lib/ai";
 import { mockTrends } from "@/lib/mock-data";
 
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     })).sort((a, b) => b.score - a.score);
 
     let analysis = "";
-    if (hasAI() && openRouter) {
+    if (hasAI() && groq) {
       const prompt = `Anda ialah "Radar AI" BarangViral.store.
 Tugas: analisis trend produk viral di TikTok, Shopee, Lazada dan Instagram untuk pasaran Malaysia.
 Beri output ringkas: 3-5 item trend teratas dengan skor 0-100, sebab singkat trend, dan saranan kategori.
@@ -29,8 +29,8 @@ ${trends.slice(0, 10).map((t) => `- ${t.keyword} (${t.category}, Skor ${t.score}
 
 Query user: ${query ?? "Apakah 5 produk/trend paling viral di Malaysia sekarang?"}`;
 
-      const completion = await openRouter.chat.completions.create({
-        model: process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free",
+      const completion = await groq.chat.completions.create({
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 800,
         temperature: 0.7,

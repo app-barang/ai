@@ -66,8 +66,8 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-gray-500 md:flex-row">
-          <p>© {new Date().getFullYear()} BarangViral.store. Hak cipta terpelihara.</p>
-          <p className="flex items-center gap-1">
+          <p className="text-center md:text-left">© {new Date().getFullYear()} BarangViral.store. Hak cipta terpelihara.</p>
+          <p className="flex items-center gap-1 text-center md:text-right">
             Dibina dengan <span className="text-gradient font-semibold">Radar AI</span> untuk rakyat Malaysia 🇲🇾
           </p>
         </div>

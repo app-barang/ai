@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "framer-motion";
 import {
@@ -32,7 +32,7 @@ const features = [
   {
     icon: Bot,
     title: "Chatbot AI 24/7",
-    desc: "Aiden menjawab soalan produk, bantu jana caption, dan bimbing strategi promosi anda.",
+    desc: "Vira menjawab soalan produk, bantu jana caption, dan bimbing strategi promosi anda.",
     color: "#7C3AED",
   },
   {

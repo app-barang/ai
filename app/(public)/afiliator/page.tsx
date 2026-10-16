@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -50,7 +50,7 @@ const faqs = [
   },
   {
     q: "Ada sokongan?",
-    a: "Ya! Chatbot AI Aiden sedia 24/7 untuk bantu jana caption, analisis link dan strategi promosi.",
+    a: "Ya! Chatbot AI Vira sedia 24/7 untuk bantu jana caption, analisis link dan strategi promosi.",
   },
 ];
 
@@ -161,7 +161,7 @@ export default function AfiliatorPage() {
             <Bot className="h-7 w-7 text-white" />
           </span>
           <h2 className="mt-4 font-heading text-2xl font-extrabold">
-            Masih bingung? <span className="text-gradient">Tanya Aiden.</span>
+            Masih bingung? <span className="text-gradient">Tanya Vira.</span>
           </h2>
           <p className="mt-2 max-w-md text-sm text-textsec">
             Chatbot AI kami sedia 24/7 untuk jawab soalan afiliasi, cara jana link

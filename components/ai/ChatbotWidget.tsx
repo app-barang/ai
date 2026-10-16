@@ -1,10 +1,33 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Flame } from "lucide-react";
 import type { ChatMessage } from "@/types";
 import { cn } from "@/lib/utils";
+
+/** Avatar Vira - gradient dengan logo viral */
+function ViraAvatar({ size = "md", pulse = false }: { size?: "sm" | "md" | "lg"; pulse?: boolean }) {
+  const sizes = {
+    sm: "h-8 w-8",
+    md: "h-10 w-10",
+    lg: "h-12 w-12",
+  };
+  const iconSizes = { sm: "h-3.5 w-3.5", md: "h-4.5 w-4.5", lg: "h-5 w-5" };
+  return (
+    <span
+      className={cn(
+        "relative flex shrink-0 items-center justify-center rounded-xl bg-gradient-brand shadow-glow",
+        sizes[size]
+      )}
+    >
+      <Flame className={cn("text-white", iconSizes[size])} />
+      {pulse && (
+        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-success" />
+      )}
+    </span>
+  );
+}
 
 const quickPrompts = [
   "Produk apa yang viral minggu ini?",
@@ -19,7 +42,7 @@ export default function ChatbotWidget() {
     {
       role: "assistant",
       content:
-        "Hai! 👋 Saya **Aiden**, pembantu AI BarangViral. Saya boleh bantu anda cari produk viral, jelaskan komisen afiliasi, atau bimbing jana link promosi. Apa yang boleh saya tolong?",
+        "Hai! 👋 Saya **Vira**, pembantu AI BarangViral. Saya boleh bantu anda cari produk viral, jelaskan komisen afiliasi, atau bimbing jana link promosi. Apa yang boleh saya tolong?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -128,7 +151,7 @@ export default function ChatbotWidget() {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 1.5, type: "spring" }}
-        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-glow-lg transition-transform hover:scale-110 md:bottom-6 md:right-6"
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-brand text-white shadow-glow-lg transition-transform hover:scale-110 md:bottom-28 md:right-6 lg:bottom-6 lg:right-6"
         aria-label="Buka chatbot"
       >
         <AnimatePresence mode="wait">
@@ -158,17 +181,18 @@ export default function ChatbotWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25 }}
-            className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[560px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-soft-lg md:bottom-6 md:right-6"
+            className="fixed bottom-24 right-4 z-50 flex h-[70vh] max-h-[560px] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-soft-lg md:bottom-28 md:right-6 lg:bottom-6 lg:right-6"
           >
             {/* Header */}
             <div className="flex items-center gap-3 bg-gradient-brand px-5 py-4">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
-                <Bot className="h-5 w-5 text-white" />
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur">
+                <Flame className="h-5 w-5 text-white" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-primary bg-success" />
               </span>
               <div>
-                <p className="font-heading font-bold text-white">Aiden 🤖</p>
+                <p className="font-heading font-bold text-white">Vira</p>
                 <p className="flex items-center gap-1.5 text-xs text-white/80">
-                  <span className="h-2 w-2 rounded-full bg-success" />
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-success" />
                   Dalam talian • Streaming AI
                 </p>
               </div>
@@ -193,16 +217,15 @@ export default function ChatbotWidget() {
                     m.role === "user" ? "flex-row-reverse" : ""
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-                      m.role === "assistant"
-                        ? "bg-gradient-brand text-white"
-                        : "bg-bgalt text-secondary"
-                    )}
-                  >
-                    {m.role === "assistant" ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                  </span>
+                  {m.role === "assistant" ? (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-brand shadow-glow">
+                      <Flame className="h-3.5 w-3.5 text-white" />
+                    </span>
+                  ) : (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-bgalt text-secondary">
+                      <User className="h-4 w-4" />
+                    </span>
+                  )}
                   <div
                     className={cn(
                       "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
@@ -224,8 +247,8 @@ export default function ChatbotWidget() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-2"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-brand text-white">
-                    <Bot className="h-4 w-4" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-brand shadow-glow">
+                    <Flame className="h-3.5 w-3.5 text-white animate-pulse" />
                   </span>
                   <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-gray-100 bg-bgalt px-4 py-2.5 text-sm leading-relaxed">
                     {currentResponse && <span>{renderMd(currentResponse)}</span>}

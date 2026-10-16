@@ -1,10 +1,11 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
+import { mockProducts } from "./mock-data";
 
-const apiKey = process.env.OPENROUTER_API_KEY;
-const model = process.env.OPENROUTER_MODEL || "google/gemini-2.0-flash-exp:free";
-const baseURL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
+const apiKey = process.env.GROQ_API_KEY;
+const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const baseURL = process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
 
-export const openRouter = apiKey && apiKey.length > 10
+export const groq = apiKey && apiKey.length > 10
   ? new OpenAI({
       apiKey,
       baseURL,
@@ -16,7 +17,26 @@ export const openRouter = apiKey && apiKey.length > 10
   : null;
 
 export function hasAI(): boolean {
-  return !!apiKey && apiKey.length > 10 && !!openRouter;
+  return !!apiKey && apiKey.length > 10 && !!groq;
+}
+
+/** Ambil produk viral dari DB, fallback ke data demo bila DB down */
+async function getViralProducts() {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const products = await prisma.product.findMany({
+      where: { isViral: true },
+      take: 5,
+      select: { name: true, price: true, rating: true, radarScore: true },
+    });
+    if (products.length > 0) return products;
+  } catch (error) {
+    console.warn("[AI] DB tidak dapat dicapai, guna data demo");
+  }
+  return mockProducts
+    .filter((p) => p.isViral)
+    .slice(0, 5)
+    .map((p) => ({ name: p.name, price: p.price, rating: p.rating, radarScore: p.radarScore }));
 }
 
 export const SYSTEM_PROMPTS = {
@@ -56,25 +76,20 @@ function fallbackChatResponse(message: string): string {
   if (lower.includes("withdraw") || lower.includes("keluar") || lower.includes("wang")) {
     return "Pengeluaran wang boleh dibuat di Dashboard → Wallet. Minimum RM50, proses dalam 1-3 hari bekerja melalui pindahan bank. 💸";
   }
-  return "Hai! 👋 Saya Aiden, pembantu AI BarangViral. Boleh saya bantu cari produk viral, cara jana link afiliasi, atau soalan komisen? (Nota: AI penuh aktif selepas anda set OPENROUTER_API_KEY dalam .env.local)";
+  return "Hai! 👋 Saya **Vira**, pembantu AI BarangViral. Boleh saya bantu cari produk viral, cara jana link afiliasi, atau soalan komisen? (Nota: AI penuh aktif selepas anda set GROQ_API_KEY dalam .env.local)";
 }
 
 export async function chatCompletion(
   messages: { role: "user" | "assistant"; content: string }[],
   context: "buyer" | "affiliate" = "buyer"
 ): Promise<string> {
-  if (!hasAI() || !openRouter) {
+  if (!hasAI() || !groq) {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     return fallbackChatResponse(lastUser?.content ?? "");
   }
 
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const products = await prisma.product.findMany({
-      where: { isViral: true },
-      take: 5,
-      select: { name: true, price: true, rating: true, radarScore: true },
-    });
+    const products = await getViralProducts();
 
     const productContext = products
       .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
@@ -84,7 +99,7 @@ export async function chatCompletion(
       SYSTEM_PROMPTS[context] +
       `\n\nProduk viral semasa:\n${productContext}`;
 
-    const completion = await openRouter.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       model,
       messages: [
         { role: "system", content: systemPrompt },
@@ -105,7 +120,7 @@ export async function chatCompletionStream(
   messages: { role: "user" | "assistant"; content: string }[],
   context: "buyer" | "affiliate" = "buyer"
 ): Promise<ReadableStream<Uint8Array>> {
-  if (!hasAI() || !openRouter) {
+  if (!hasAI() || !groq) {
     const fallback = fallbackChatResponse(
       [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
     );
@@ -118,12 +133,7 @@ export async function chatCompletionStream(
   }
 
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const products = await prisma.product.findMany({
-      where: { isViral: true },
-      take: 5,
-      select: { name: true, price: true, rating: true, radarScore: true },
-    });
+    const products = await getViralProducts();
 
     const productContext = products
       .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
@@ -133,7 +143,7 @@ export async function chatCompletionStream(
       SYSTEM_PROMPTS[context] +
       `\n\nProduk viral semasa:\n${productContext}`;
 
-    const stream = await openRouter.chat.completions.create({
+    const stream = await groq.chat.completions.create({
       model,
       messages: [
         { role: "system", content: systemPrompt },
@@ -172,18 +182,28 @@ export async function chatCompletionStream(
 }
 
 export async function radarAnalysis(query?: string): Promise<string> {
-  if (!hasAI() || !openRouter) {
-    return "Radar AI dalam mod demo. Tambah OPENROUTER_API_KEY untuk analisis trend penuh. 📡";
+  if (!hasAI() || !groq) {
+    return "Radar AI dalam mod demo. Tambah GROQ_API_KEY untuk analisis trend penuh. 📡";
   }
 
   try {
-    const { prisma } = await import("@/lib/prisma");
-    const trending = await prisma.product.findMany({
-      where: { isViral: true },
-      take: 10,
-      select: { name: true, price: true, category: true, radarScore: true, marketplace: true },
-      orderBy: { radarScore: "desc" },
-    });
+    let trending: { name: string; price: number; category: string; radarScore: number; marketplace: string }[] = [];
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      trending = await prisma.product.findMany({
+        where: { isViral: true },
+        take: 10,
+        select: { name: true, price: true, category: true, radarScore: true, marketplace: true },
+        orderBy: { radarScore: "desc" },
+      });
+    } catch {
+      console.warn("[AI] DB tidak dapat dicapai, guna data demo");
+    }
+    if (trending.length === 0) {
+      trending = mockProducts
+        .filter((p) => p.isViral)
+        .map((p) => ({ name: p.name, price: p.price, category: p.category, radarScore: p.radarScore, marketplace: p.marketplace }));
+    }
 
     const prompt = `Anda ialah "Radar AI" BarangViral.store.
 Tugas: analisis trend produk viral di TikTok, Shopee, Lazada dan Instagram untuk pasaran Malaysia.
@@ -195,7 +215,7 @@ ${trending.map((p) => `- ${p.name} (${p.category}, RM${p.price}, Radar ${p.radar
 
 Query user: ${query ?? "Apakah 5 produk/trend paling viral di Malaysia sekarang?"}`;
 
-    const completion = await openRouter.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       model,
       messages: [{ role: "user", content: prompt }],
       max_tokens: 800,
@@ -215,7 +235,7 @@ export async function generateCaption(
   price?: number,
   tone?: string
 ): Promise<string> {
-  if (!hasAI() || !openRouter) {
+  if (!hasAI() || !groq) {
     return `🔥 ${productName} memang VIRAL! Jangan lepaskan peluang. Order sekarang! #barangviral #${platform.toLowerCase()} #trending`;
   }
 
@@ -245,12 +265,14 @@ Peraturan:
 - Guna Bahasa Melayu santai
 - estimatedEngagement: High/Medium/Low`;
 
-    const completion = await openRouter.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 800,
+      max_tokens: 2000,
       temperature: 0.9,
-    });
+      response_format: { type: "json_object" },
+      reasoning_effort: "low",
+    } as never);
 
     let text = completion.choices[0]?.message?.content?.trim() ?? "";
     

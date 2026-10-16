@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { openRouter, hasAI } from "@/lib/ai";
+import { groq, hasAI } from "@/lib/ai";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fallback kalau tiada API key
-    if (!hasAI() || !openRouter) {
+    if (!hasAI() || !groq) {
       return NextResponse.json({
         hook: `Gais, korang takkan percaya... ${productName} ni RM${price} je! 😱`,
         caption: `Serius tak tipu, ${productName} ni memang viral! 🔥\n\nHarga RM${price} je, rating 4.8+, cepat sebelum habis!`,
@@ -61,13 +61,14 @@ Peraturan:
 - Guna Bahasa Melayu santai
 - estimatedEngagement: High/Medium/Low`;
 
-    const completion = await openRouter.chat.completions.create({
-      model: process.env.OPENROUTER_MODEL || "openrouter/auto",
+    const completion = await groq.chat.completions.create({
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 800,
+      max_tokens: 2000,
       temperature: 0.9,
       response_format: { type: "json_object" },
-    });
+      reasoning_effort: "low",
+    } as never);
 
     let text = completion.choices[0]?.message?.content?.trim() ?? "";
     
