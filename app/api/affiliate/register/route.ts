@@ -1,75 +1,132 @@
-// Pendaftaran afiliator - API
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import prisma, { withDbRetry } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, username, tiktok, instagram, youtube, followers, bankName, bankAccount } =
-      await req.json();
+    const body = await req.json().catch(() => ({}));
+    const {
+      name,
+      email,
+      password,
+      username,
+      uplineCode,
+      tiktok,
+      instagram,
+      youtube,
+      facebook,
+      followers,
+      bankName,
+      bankAccount,
+      bankHolder,
+    } = body;
 
-    // Validasi
     if (!name || !email || !password || !username) {
       return NextResponse.json(
         { error: "Nama, email, kata laluan dan username diperlukan" },
         { status: 400 }
       );
     }
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Kata laluan min. 8 aksara" }, { status: 400 });
+    if (String(password).length < 8) {
+      return NextResponse.json({ error: "Kata laluan minimum 8 aksara" }, { status: 400 });
     }
-    if (!tiktok && !instagram && !youtube) {
-      return NextResponse.json(
-        { error: "Isi sekurang-kurangnya satu media sosial" },
-        { status: 400 }
-      );
-    }
-    if (!bankName || !bankAccount) {
-      return NextResponse.json({ error: "Butiran bank diperlukan" }, { status: 400 });
+    if (String(username).length < 3) {
+      return NextResponse.json({ error: "Username minimum 3 aksara" }, { status: 400 });
     }
 
-    // Semak email & username
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    // Semak email & username (selari)
+    const [existingUser, existingAff, upline] = await Promise.all([
+      withDbRetry(() => prisma.user.findUnique({ where: { email } })),
+      withDbRetry(() => prisma.affiliate.findUnique({ where: { username } })),
+      uplineCode
+        ? withDbRetry(() =>
+            prisma.affiliate.findUnique({
+              where: { username: uplineCode },
+              include: { upline: { include: { upline: true } } },
+            })
+          )
+        : Promise.resolve(null),
+    ]);
+
     if (existingUser) {
       return NextResponse.json({ error: "Email sudah didaftarkan" }, { status: 409 });
     }
-    const existingAff = await prisma.affiliate.findUnique({ where: { username } });
     if (existingAff) {
       return NextResponse.json({ error: "Username sudah digunakan" }, { status: 409 });
+    }
+    if (uplineCode && !upline) {
+      return NextResponse.json({ error: "Kod rujukan tidak sah" }, { status: 400 });
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
-    // Cipta user + affiliate dalam satu transaksi
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
+    const user = await withDbRetry(() =>
+      prisma.user.create({
         data: {
           name,
           email,
           password: hashed,
           role: "AFFILIATE",
         },
-      });
+      })
+    );
 
-      const affiliate = await tx.affiliate.create({
+    const affiliate = await withDbRetry(() =>
+      prisma.affiliate.create({
         data: {
           userId: user.id,
           username,
+          uplineId: upline?.id ?? null,
           tiktok: tiktok || null,
           instagram: instagram || null,
           youtube: youtube || null,
-          followers: followers || null,
-          bankName,
-          bankAccount,
-          commissionRate: 0.3, // bermula 30%, naik sehingga 50%
+          facebook: facebook || null,
+          followers: followers ? Number(followers) : null,
+          bankName: bankName || null,
+          bankAccount: bankAccount || null,
+          bankHolder: bankHolder || null,
         },
-      });
+      })
+    );
 
-      return { user, affiliate };
-    });
+    // Kemas kini kiraan level upline (L1 ke atas, L2 ke atasan, L3 ke atasan-atasan)
+    if (upline) {
+      const ops = [
+        prisma.affiliate.update({
+          where: { id: upline.id },
+          data: { level1Count: { increment: 1 } },
+        }),
+      ];
+      if (upline.uplineId) {
+        ops.push(
+          prisma.affiliate.update({
+            where: { id: upline.uplineId },
+            data: { level2Count: { increment: 1 } },
+          })
+        );
+      }
+      if (upline.upline?.uplineId) {
+        ops.push(
+          prisma.affiliate.update({
+            where: { id: upline.upline.uplineId },
+            data: { level3Count: { increment: 1 } },
+          })
+        );
+      }
+      await withDbRetry(() => prisma.$transaction(ops));
+    }
 
     return NextResponse.json(
-      { success: true, userId: result.user.id, affiliateId: result.affiliate.id },
+      {
+        success: true,
+        userId: user.id,
+        affiliateId: affiliate.id,
+        username: affiliate.username,
+        upline: upline ? upline.username : null,
+      },
       { status: 201 }
     );
   } catch (error) {

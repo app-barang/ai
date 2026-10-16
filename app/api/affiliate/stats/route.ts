@@ -1,45 +1,101 @@
-// Stats afiliator - API
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import prisma, { withDbRetry } from "@/lib/prisma";
+import { requireAffiliate } from "@/lib/api-auth";
+import { monthPeriod } from "@/lib/bonus";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function rangeFor(period: string): { start: Date; end: Date } {
+  const [y, m] = period.split("-").map(Number);
+  const start = new Date(Date.UTC(y, m - 1, 1));
+  const end = new Date(Date.UTC(y, m, 1));
+  return { start, end };
+}
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Tidak berkebenaran" }, { status: 401 });
-    }
+    const authz = await requireAffiliate();
+    if (!authz.ok) return authz.response;
+    const { affiliateId } = authz;
 
-    const user = await prisma.user.findUnique({
-      where: { id: (session.user as { id?: string }).id },
-      include: { affiliate: true },
-    });
+    const now = new Date();
+    const thisMonth = monthPeriod(now);
+    const prev = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const lastMonth = monthPeriod(prev);
 
-    if (!user?.affiliate) {
-      return NextResponse.json({ error: "Bukan afiliator" }, { status: 403 });
-    }
+    const thisRange = rangeFor(thisMonth);
+    const lastRange = rangeFor(lastMonth);
 
-    const affiliateId = user.affiliate.id;
+    const [affiliate, thisGroups, lastGroups] = await Promise.all([
+      withDbRetry(() =>
+        prisma.affiliate.findUnique({
+          where: { id: affiliateId },
+          select: {
+            username: true,
+            tier: true,
+            status: true,
+            balance: true,
+            pendingBalance: true,
+            totalEarnings: true,
+            totalClicks: true,
+            totalSales: true,
+            totalMerchants: true,
+            level1Count: true,
+            level2Count: true,
+            level3Count: true,
+          },
+        })
+      ),
+      withDbRetry(() =>
+        prisma.earning.groupBy({
+          by: ["type"],
+          where: { affiliateId, createdAt: { gte: thisRange.start, lt: thisRange.end } },
+          _sum: { netAmount: true },
+          _count: true,
+        })
+      ),
+      withDbRetry(() =>
+        prisma.earning.groupBy({
+          by: ["type"],
+          where: { affiliateId, createdAt: { gte: lastRange.start, lt: lastRange.end } },
+          _sum: { netAmount: true },
+          _count: true,
+        })
+      ),
+    ]);
 
-    // Agregat dari link afiliasi
-    const links = await prisma.affLink.findMany({
-      where: { affiliateId },
-      select: { clicks: true, conversions: true, earnings: true },
-    });
+    const toMap = (groups: { type: string; _sum: { netAmount: number | null } }[]) => {
+      const m: Record<string, number> = {
+        CLICK_REWARD: 0,
+        RENT_REWARD: 0,
+        SALE_COMMISSION: 0,
+        TEAM_BONUS: 0,
+      };
+      for (const g of groups) m[g.type] = Number((g._sum.netAmount ?? 0).toFixed(4));
+      return m;
+    };
 
-    const totalClicks = links.reduce((a, l) => a + l.clicks, 0);
-    const totalConversions = links.reduce((a, l) => a + l.conversions, 0);
-    const totalEarnings = links.reduce((a, l) => a + l.earnings, 0);
+    const thisByType = toMap(thisGroups);
+    const lastByType = toMap(lastGroups);
+    const sum = (m: Record<string, number>) =>
+      Number(Object.values(m).reduce((a, b) => a + b, 0).toFixed(4));
 
     return NextResponse.json({
-      totalClicks,
-      totalConversions,
-      totalEarnings,
-      balance: user.affiliate.balance,
-      conversionRate: totalClicks > 0 ? totalConversions / totalClicks : 0,
-      commissionRate: user.affiliate.commissionRate,
-      status: user.affiliate.status,
+      affiliate,
+      levels: {
+        level1: affiliate?.level1Count ?? 0,
+        level2: affiliate?.level2Count ?? 0,
+        level3: affiliate?.level3Count ?? 0,
+      },
+      income: {
+        klik: thisByType.CLICK_REWARD,
+        sewa: thisByType.RENT_REWARD,
+        jualan: thisByType.SALE_COMMISSION,
+        team: thisByType.TEAM_BONUS,
+      },
+      thisMonth: { period: thisMonth, total: sum(thisByType), byType: thisByType },
+      lastMonth: { period: lastMonth, total: sum(lastByType), byType: lastByType },
     });
   } catch (error) {
     console.error("[API /api/affiliate/stats]", error);
