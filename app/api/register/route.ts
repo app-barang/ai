@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import prisma, { withDbRetry } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,21 +20,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await withDbRetry(() =>
+      prisma.user.findUnique({ where: { email } })
+    );
     if (existing) {
       return NextResponse.json({ error: "Email sudah didaftarkan" }, { status: 409 });
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashed,
-        role: role === "AFFILIATE" ? "AFFILIATE" : "BUYER",
-      },
-    });
+    const user = await withDbRetry(() =>
+      prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashed,
+          role: role === "AFFILIATE" ? "AFFILIATE" : "BUYER",
+        },
+      })
+    );
 
     return NextResponse.json({ success: true, userId: user.id }, { status: 201 });
   } catch (error) {

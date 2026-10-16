@@ -4,7 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import prisma, { withDbRetry } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as NextAuthOptions["adapter"],
@@ -30,9 +30,12 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email dan kata laluan diperlukan");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        // Retry automatik bila sambungan Supabase intermittent
+        const user = await withDbRetry(() =>
+          prisma.user.findUnique({
+            where: { email: credentials.email },
+          })
+        );
 
         if (!user || !user.password) {
           throw new Error("Pengguna tidak dijumpai");
