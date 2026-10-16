@@ -38,6 +38,18 @@ export function generateShortCode(length = 8): string {
   return code;
 }
 
+/** Jana slug dari nama produk (huruf kecil, sengkang) */
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
 /** Dapatkan warna badge mengikut skor radar */
 export function getRadarColor(score: number): string {
   if (score >= 80) return "#FF007A";

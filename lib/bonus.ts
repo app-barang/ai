@@ -35,6 +35,13 @@ export const CAPS = {
   RENT_REWARD: 2000, // RM/bulan
 };
 
+/** Had bilangan produk mengikut tier langganan */
+export const PRODUCT_LIMITS: Record<MerchantTier, number> = {
+  STARTER: 5,
+  PRO: 20,
+  BUSINESS: Infinity,
+};
+
 // ---------- Tier afiliator ----------
 export const AFFILIATE_TIERS: Record<
   AffiliateTier,
