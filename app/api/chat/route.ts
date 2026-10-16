@@ -9,13 +9,14 @@ export const dynamic = "force-dynamic";
 async function getProductContext(): Promise<string> {
   try {
     const products = await prisma.product.findMany({
-      where: { isViral: true },
+      where: { isViral: true, isActive: true },
+      orderBy: { viralScore: "desc" },
       take: 5,
-      select: { name: true, price: true, rating: true, radarScore: true },
+      select: { name: true, price: true, rating: true, viralScore: true },
     });
     if (products.length > 0) {
       return products
-        .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
+        .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Skor Viral ${p.viralScore})`)
         .join("\n");
     }
   } catch (error) {
@@ -25,7 +26,7 @@ async function getProductContext(): Promise<string> {
   return mockProducts
     .filter((p) => p.isViral)
     .slice(0, 5)
-    .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
+    .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Skor Viral ${p.radarScore})`)
     .join("\n");
 }
 

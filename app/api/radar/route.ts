@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { groq, hasAI } from "@/lib/ai";
-import { prisma } from "@/lib/prisma";
-import { mockTrends } from "@/lib/mock-data";
+import prisma, { withDbRetry } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,41 +21,24 @@ export interface TrendingItem {
 }
 
 async function getLiveProducts(): Promise<TrendingItem[]> {
-  try {
-    const products = await prisma.product.findMany({
-      where: { isViral: true },
+  const products = await withDbRetry(() =>
+    prisma.product.findMany({
+      where: { isViral: true, isActive: true },
       orderBy: [{ viralScore: "desc" }, { sold: "desc" }],
       take: 10,
-    });
-    if (products.length > 0) {
-      return products.map((p, i) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: p.price,
-        category: p.category,
-        platform: PLATFORMS[i % PLATFORMS.length],
-        viralScore: p.viralScore,
-        viralTrend: p.viralTrend ?? "stable",
-        mentions: p.sold,
-        lastAnalyzed: p.lastAnalyzed ? p.lastAnalyzed.toISOString() : null,
-      }));
-    }
-  } catch {
-    console.warn("[Radar] DB tidak dapat dicapai, guna data demo");
-  }
-  // Fallback: data demo
-  return mockTrends.slice(0, 10).map((t, i) => ({
-    id: t.id,
-    name: t.keyword,
-    slug: "",
-    price: 0,
-    category: t.category,
-    platform: t.platform || PLATFORMS[i % PLATFORMS.length],
-    viralScore: t.score,
-    viralTrend: t.score >= 80 ? "rising" : "stable",
-    mentions: t.mentions,
-    lastAnalyzed: null,
+    })
+  );
+  return products.map((p, i) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    price: p.price,
+    category: p.category,
+    platform: PLATFORMS[i % PLATFORMS.length],
+    viralScore: p.viralScore,
+    viralTrend: p.viralTrend ?? "stable",
+    mentions: p.sold,
+    lastAnalyzed: p.lastAnalyzed ? p.lastAnalyzed.toISOString() : null,
   }));
 }
 

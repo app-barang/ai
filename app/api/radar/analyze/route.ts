@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { groq, hasAI } from "@/lib/ai";
-import { prisma } from "@/lib/prisma";
+import prisma, { withDbRetry } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,11 +21,13 @@ function mathScore(
 
 export async function POST() {
   try {
-    const products = await prisma.product.findMany({
-      where: { isViral: true },
-      orderBy: { sold: "desc" },
-      take: 10,
-    });
+    const products = await withDbRetry(() =>
+      prisma.product.findMany({
+        where: { isViral: true, isActive: true },
+        orderBy: { sold: "desc" },
+        take: 10,
+      })
+    );
 
     if (products.length === 0) {
       return NextResponse.json(
@@ -43,7 +45,7 @@ export async function POST() {
 ${products
   .map(
     (p, i) =>
-      `${i + 1}. ${p.name} (${p.category}, RM${p.price}, rating ${p.rating}, terjual ${p.sold}, skor semasa ${p.radarScore})`
+      `${i + 1}. ${p.name} (${p.category}, RM${p.price}, rating ${p.rating}, terjual ${p.sold}, skor semasa ${p.viralScore})`
   )
   .join("\n")}
 Format: {"products": [{"index":1,"viralScore":95,"viralTrend":"rising"}]}`;
@@ -83,16 +85,18 @@ Format: {"products": [{"index":1,"viralScore":95,"viralTrend":"rising"}]}`;
     }
 
     const now = new Date();
-    await Promise.all(
-      products.map((p, i) =>
-        prisma.product.update({
-          where: { id: p.id },
-          data: {
-            viralScore: scores[i].viralScore,
-            viralTrend: scores[i].viralTrend,
-            lastAnalyzed: now,
-          },
-        })
+    await withDbRetry(() =>
+      prisma.$transaction(
+        products.map((p, i) =>
+          prisma.product.update({
+            where: { id: p.id },
+            data: {
+              viralScore: scores[i].viralScore,
+              viralTrend: scores[i].viralTrend,
+              lastAnalyzed: now,
+            },
+          })
+        )
       )
     );
 

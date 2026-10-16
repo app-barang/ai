@@ -23,11 +23,12 @@ export function hasAI(): boolean {
 /** Ambil produk viral dari DB, fallback ke data demo bila DB down */
 async function getViralProducts() {
   try {
-    const { prisma } = await import("@/lib/prisma");
+    const { default: prisma } = await import("@/lib/prisma");
     const products = await prisma.product.findMany({
-      where: { isViral: true },
+      where: { isViral: true, isActive: true },
+      orderBy: { viralScore: "desc" },
       take: 5,
-      select: { name: true, price: true, rating: true, radarScore: true },
+      select: { name: true, price: true, rating: true, viralScore: true },
     });
     if (products.length > 0) return products;
   } catch (error) {
@@ -36,7 +37,7 @@ async function getViralProducts() {
   return mockProducts
     .filter((p) => p.isViral)
     .slice(0, 5)
-    .map((p) => ({ name: p.name, price: p.price, rating: p.rating, radarScore: p.radarScore }));
+    .map((p) => ({ name: p.name, price: p.price, rating: p.rating, viralScore: p.radarScore }));
 }
 
 export const SYSTEM_PROMPTS = {
@@ -92,7 +93,7 @@ export async function chatCompletion(
     const products = await getViralProducts();
 
     const productContext = products
-      .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
+      .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Skor Viral ${p.viralScore})`)
       .join("\n");
 
     const systemPrompt =
@@ -136,7 +137,7 @@ export async function chatCompletionStream(
     const products = await getViralProducts();
 
     const productContext = products
-      .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Radar Score ${p.radarScore})`)
+      .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Skor Viral ${p.viralScore})`)
       .join("\n");
 
     const systemPrompt =
@@ -187,14 +188,14 @@ export async function radarAnalysis(query?: string): Promise<string> {
   }
 
   try {
-    let trending: { name: string; price: number; category: string; radarScore: number; marketplace: string }[] = [];
+    let trending: { name: string; price: number; category: string; viralScore: number }[] = [];
     try {
-      const { prisma } = await import("@/lib/prisma");
+      const { default: prisma } = await import("@/lib/prisma");
       trending = await prisma.product.findMany({
-        where: { isViral: true },
+        where: { isViral: true, isActive: true },
         take: 10,
-        select: { name: true, price: true, category: true, radarScore: true, marketplace: true },
-        orderBy: { radarScore: "desc" },
+        select: { name: true, price: true, category: true, viralScore: true },
+        orderBy: { viralScore: "desc" },
       });
     } catch {
       console.warn("[AI] DB tidak dapat dicapai, guna data demo");
@@ -202,7 +203,7 @@ export async function radarAnalysis(query?: string): Promise<string> {
     if (trending.length === 0) {
       trending = mockProducts
         .filter((p) => p.isViral)
-        .map((p) => ({ name: p.name, price: p.price, category: p.category, radarScore: p.radarScore, marketplace: p.marketplace }));
+        .map((p) => ({ name: p.name, price: p.price, category: p.category, viralScore: p.radarScore }));
     }
 
     const prompt = `Anda ialah "Radar AI" BarangViral.store.
@@ -211,7 +212,7 @@ Beri output ringkas: 3-5 item trend teratas dengan skor 0-100, sebab singkat tre
 Gunakan format JSON ringkas jika diminta.
 
 Produk viral semasa:
-${trending.map((p) => `- ${p.name} (${p.category}, RM${p.price}, Radar ${p.radarScore}, ${p.marketplace})`).join("\n")}
+${trending.map((p) => `- ${p.name} (${p.category}, RM${p.price}, Skor Viral ${p.viralScore})`).join("\n")}
 
 Query user: ${query ?? "Apakah 5 produk/trend paling viral di Malaysia sekarang?"}`;
 
