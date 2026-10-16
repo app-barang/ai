@@ -62,18 +62,37 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
       }
       if (token?.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { role: true },
-        });
-        if (dbUser) token.role = dbUser.role;
+        // Ambil role + id affiliate/merchant (retry bila sambungan intermittent)
+        const dbUser = await withDbRetry(() =>
+          prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              role: true,
+              affiliate: { select: { id: true } },
+              merchant: { select: { id: true } },
+            },
+          })
+        ).catch(() => null);
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.affiliateId = dbUser.affiliate?.id ?? null;
+          token.merchantId = dbUser.merchant?.id ?? null;
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string }).id = token.id as string;
-        (session.user as { role?: string }).role = token.role as string;
+        const u = session.user as {
+          id?: string;
+          role?: string;
+          affiliateId?: string | null;
+          merchantId?: string | null;
+        };
+        u.id = token.id as string;
+        u.role = token.role as string;
+        u.affiliateId = (token.affiliateId as string | null) ?? null;
+        u.merchantId = (token.merchantId as string | null) ?? null;
       }
       return session;
     },

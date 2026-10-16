@@ -67,6 +67,11 @@ export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Ketepatan 4 dp — perlu untuk bonus klik kecil (RM0.005–0.05) */
+export function round4(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
+
 export function monthPeriod(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -77,9 +82,9 @@ export function monthPeriod(date = new Date()): string {
  * diberi kepada level 1 supaya jumlah kekal tepat.
  */
 export function splitByLevels(amount: number, splits: number[]): number[] {
-  const out = splits.map((s) => round2(amount * s));
-  const diff = round2(amount - out.reduce((a, b) => a + b, 0));
-  if (out.length > 0) out[0] = round2(out[0] + diff);
+  const out = splits.map((s) => round4(amount * s));
+  const diff = round4(amount - out.reduce((a, b) => a + b, 0));
+  if (out.length > 0) out[0] = round4(out[0] + diff);
   return out;
 }
 
@@ -87,7 +92,7 @@ export function splitByLevels(amount: number, splits: number[]): number[] {
 export function clickRate(fund: number, totalClicks: number, min = 0.005, max = 0.05): number {
   if (totalClicks <= 0) return min;
   const rate = fund / totalClicks;
-  return Math.min(max, Math.max(min, round2(rate * 1000) / 1000));
+  return Math.min(max, Math.max(min, round4(rate)));
 }
 
 /** Bonus Team Leader: RM100–2,000 ikut saiz team */
