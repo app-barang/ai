@@ -46,20 +46,21 @@ async function monthlyClickEarnings(affiliateId: string, period: string): Promis
 }
 
 export async function processClick(input: ProcessClickInput): Promise<ProcessClickResult> {
-  const affiliate = await withDbRetry(() =>
-    prisma.affiliate.findUnique({
-      where: { username: input.affiliateUsername },
-      include: { upline: { include: { upline: true } } },
-    })
-  );
+  const [affiliate, product] = await Promise.all([
+    withDbRetry(() =>
+      prisma.affiliate.findUnique({
+        where: { username: input.affiliateUsername },
+        include: { upline: { include: { upline: true } } },
+      })
+    ),
+    withDbRetry(() =>
+      prisma.product.findUnique({ where: { id: input.productId } })
+    ),
+  ]);
 
   if (!affiliate) {
     throw new Error("Afiliator tidak dijumpai");
   }
-
-  const product = await withDbRetry(() =>
-    prisma.product.findUnique({ where: { id: input.productId } })
-  );
   if (!product) {
     throw new Error("Produk tidak dijumpai");
   }

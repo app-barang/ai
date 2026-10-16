@@ -17,18 +17,20 @@ export function fingerprint(ip: string, ua: string | null | undefined): string {
   return `fp_${(h >>> 0).toString(16)}`;
 }
 
-/** Klik diri sendiri: afiliator klik produk merchant yang sama IP berulang */
-export async function selfClickCount(affiliateId: string, ip: string): Promise<number> {
-  const since = new Date(Date.now() - 3600_000); // 1 jam
-  return prisma.click.count({
-    where: { affiliateId, ipAddress: ip, createdAt: { gte: since } },
-  });
-}
-
-/** Duplikasi IP tinggi (syak click farm) */
-export async function ipBurstCount(ip: string): Promise<number> {
-  const since = new Date(Date.now() - 60_000); // 1 minit
-  return prisma.click.count({ where: { ipAddress: ip, createdAt: { gte: since } } });
+/** Klik diri sendiri + burst IP — SATU round-trip (2 subquery) */
+export async function clickCounts(
+  affiliateId: string,
+  ip: string
+): Promise<{ burst: number; self: number }> {
+  const since1 = new Date(Date.now() - 60_000);
+  const since60 = new Date(Date.now() - 3600_000);
+  const rows = await prisma.$queryRaw<{ burst: bigint; self: bigint }[]>`
+    SELECT
+      (SELECT count(*) FROM clicks WHERE "ipAddress" = ${ip} AND "createdAt" >= ${since1}) AS burst,
+      (SELECT count(*) FROM clicks WHERE "affiliateId" = ${affiliateId} AND "ipAddress" = ${ip} AND "createdAt" >= ${since60}) AS self
+  `;
+  const r = rows[0];
+  return { burst: Number(r?.burst ?? 0), self: Number(r?.self ?? 0) };
 }
 
 export async function logFraud(params: {
@@ -83,7 +85,8 @@ export async function evaluateClick(params: {
     return { valid: false, reason: "BOT_CLICK" };
   }
 
-  const burst = await ipBurstCount(params.ip);
+  const { burst, self } = await clickCounts(params.affiliateId, params.ip);
+
   if (burst >= 5) {
     await logFraud({
       affiliateId: params.affiliateId,
@@ -96,7 +99,6 @@ export async function evaluateClick(params: {
     return { valid: false, reason: "IP_BURST" };
   }
 
-  const self = await selfClickCount(params.affiliateId, params.ip);
   if (self >= 10) {
     await logFraud({
       affiliateId: params.affiliateId,

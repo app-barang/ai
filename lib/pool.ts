@@ -6,15 +6,13 @@ import type { PoolType } from "@prisma/client";
 import { monthPeriod } from "@/lib/bonus";
 
 export async function getOrCreatePool(type: PoolType, period = monthPeriod()) {
-  return withDbRetry(async () => {
-    const existing = await prisma.rewardPool.findUnique({
+  return withDbRetry(() =>
+    prisma.rewardPool.upsert({
       where: { type_period: { type, period } },
-    });
-    if (existing) return existing;
-    return prisma.rewardPool.create({
-      data: { type, period, totalFund: 0, remaining: 0, currentRate: 0.01 },
-    });
-  });
+      update: {},
+      create: { type, period, totalFund: 0, remaining: 0, currentRate: 0.01 },
+    })
+  );
 }
 
 /** Tambah dana ke pool (dari split langganan merchant) */
