@@ -79,28 +79,36 @@ export default function ChatbotWidget() {
     if (!trimmed || streaming) return;
 
     const userMsg: ChatMessage = { role: "user", content: trimmed };
-    setMessages((m) => [...m, userMsg]);
+    const history = [...messages, userMsg];
+    setMessages(history);
     setInput("");
     setStreaming(true);
     setCurrentResponse("");
 
+    let buffer = "";
     try {
       abortControllerRef.current = new AbortController();
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMsg], context: "buyer" }),
+        body: JSON.stringify({ messages: history, context: "buyer" }),
         signal: abortControllerRef.current.signal,
       });
 
       if (!res.ok || !res.body) {
-        throw new Error("Failed to fetch stream");
+        let errMsg = "Maaf, AI sedang rehat. Sila cuba lagi.";
+        try {
+          const data = await res.json();
+          if (data?.error) errMsg = data.error;
+        } catch {
+          /* abaikan */
+        }
+        throw new Error(errMsg);
       }
 
       const reader = res.body.getReader();
       streamRef.current = reader;
       const decoder = new TextDecoder();
-      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -108,21 +116,37 @@ export default function ChatbotWidget() {
         buffer += decoder.decode(value, { stream: true });
         setCurrentResponse(buffer);
       }
-      setCurrentResponse("");
+      buffer += decoder.decode();
+      setCurrentResponse(buffer);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        // User closed chat during streaming - ignore
-        return;
+        return; // user tutup chat — abaikan
       }
       console.error("[Chat Error]", error);
-      setMessages((m) => [...m, { role: "assistant", content: "Sambungan bermasalah. Sila cuba lagi." }]);
+      const msg =
+        error instanceof Error && error.message !== "Failed to fetch stream"
+          ? error.message
+          : "Sambungan bermasalah. Sila cuba lagi.";
+      setMessages((m) => [...m, { role: "assistant", content: msg }]);
+      return;
     } finally {
+      streamRef.current = null;
+      abortControllerRef.current = null;
       setStreaming(false);
-      if (currentResponse) {
-        setMessages((m) => [...m, { role: "assistant", content: currentResponse }]);
-        setCurrentResponse("");
-      }
     }
+
+    // Berjaya: simpan respons AI ke messages.
+    // Guna `buffer` lokal (BUKAN state `currentResponse` — nilai state
+    // dalam closure ini basi/kosong, itulah punca respons hilang).
+    if (buffer.trim()) {
+      setMessages((m) => [...m, { role: "assistant", content: buffer }]);
+    } else {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: "Maaf, saya tidak dapat menjawab. Sila cuba lagi." },
+      ]);
+    }
+    setCurrentResponse("");
   };
 
   const handleClose = () => {
