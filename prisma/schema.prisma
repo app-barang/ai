@@ -1,5 +1,7 @@
-// Prisma Schema - barangviral.store
-// E-Commerce + Platform Afiliasi AI
+// ============================================================
+// Prisma Schema - barangviral.store (MODEL BISNES BAHARU)
+// Merchant (subscription) + Afiliator (4 income) + Platform 3-tier
+// ============================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -11,24 +13,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ===================== PENGGUNA =====================
+// ============ USER & AUTH ============
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String?
-  image     String?
-  phone     String?
-  role      Role     @default(BUYER)
-  createdAt DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String?
+  image         String?
+  phone         String?
+  emailVerified DateTime?
+  role          Role      @default(BUYER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  affiliate Affiliate?
-  orders    Order[]
-
-  // NextAuth
   accounts  Account[]
   sessions  Session[]
+  affiliate Affiliate?
+  merchant  Merchant?
+  orders    Order[]
 
   @@map("users")
 }
@@ -36,142 +39,11 @@ model User {
 enum Role {
   BUYER
   AFFILIATE
+  MERCHANT
   ADMIN
 }
 
-// ===================== AFILIATOR =====================
-
-model Affiliate {
-  id             String     @id @default(cuid())
-  userId         String     @unique
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  username       String     @unique
-  tiktok         String?
-  instagram      String?
-  youtube        String?
-  followers      Int?
-  bankName       String?
-  bankAccount    String?
-  commissionRate Float      @default(0.30) // maksimum 0.50
-  totalEarnings  Float      @default(0)
-  balance        Float      @default(0)
-  status         AffStatus  @default(PENDING)
-  createdAt      DateTime   @default(now())
-
-  links       AffLink[]
-  withdrawals Withdrawal[]
-
-  @@map("affiliates")
-}
-
-enum AffStatus {
-  PENDING
-  ACTIVE
-  SUSPENDED
-}
-
-// ===================== PRODUK =====================
-
-model Product {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  description  String
-  price        Float
-  comparePrice Float?
-  images       String[]
-  category     String
-  rating       Float    @default(0)
-  sold         Int      @default(0)
-  stock        Int      @default(0)
-  isViral      Boolean  @default(false)
-  radarScore   Int      @default(0)
-  viralScore   Int      @default(0)
-  viralTrend   String?
-  lastAnalyzed DateTime?
-  marketplace  String
-  externalUrl  String?
-  createdAt    DateTime @default(now())
-
-  affLinks AffLink[]
-  orders   Order[]
-
-  @@index([category])
-  @@index([isViral])
-  @@index([radarScore])
-  @@map("products")
-}
-
-// ===================== LINK AFILIASI =====================
-
-model AffLink {
-  id          String    @id @default(cuid())
-  affiliateId String
-  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  shortCode   String    @unique
-  clicks      Int       @default(0)
-  conversions Int       @default(0)
-  earnings    Float     @default(0)
-  createdAt   DateTime  @default(now())
-
-  orders Order[]
-
-  @@index([affiliateId])
-  @@index([productId])
-  @@map("aff_links")
-}
-
-// ===================== PESANAN =====================
-
-model Order {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  productId String
-  product   Product     @relation(fields: [productId], references: [id])
-  quantity  Int
-  total     Float
-  status    OrderStatus @default(PENDING)
-  affLinkId String?
-  affLink   AffLink?    @relation(fields: [affLinkId], references: [id])
-  createdAt DateTime    @default(now())
-
-  @@index([userId])
-  @@map("orders")
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  SHIPPED
-  COMPLETED
-  CANCELLED
-}
-
-// ===================== PENGELUARAN WANG =====================
-
-model Withdrawal {
-  id          String         @id @default(cuid())
-  affiliateId String
-  affiliate   Affiliate      @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  amount      Float
-  method      String
-  status      WithdrawStatus @default(PENDING)
-  createdAt   DateTime       @default(now())
-
-  @@index([affiliateId])
-  @@map("withdrawals")
-}
-
-enum WithdrawStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-// ===================== MODELS NEXTAUTH =====================
+// ============ NEXTAUTH ============
 
 model Account {
   userId            String
@@ -209,4 +81,504 @@ model VerificationToken {
 
   @@id([identifier, token])
   @@map("verification_tokens")
+}
+
+// ============ MERCHANT ============
+
+model Merchant {
+  id           String @id @default(cuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business Info
+  businessName String
+  businessType String // "individual" | "sdn_bhd"
+  ssmNumber    String?
+  phone        String
+  address      String?
+
+  // Subscription
+  tier         MerchantTier   @default(STARTER)
+  status       MerchantStatus @default(PENDING)
+  subscribedAt DateTime?
+  expiresAt    DateTime?
+
+  // Financial
+  bankName    String?
+  bankAccount String?
+  bankHolder  String?
+
+  // Stats
+  totalClicks  Int   @default(0)
+  totalSales   Int   @default(0)
+  totalRevenue Float @default(0)
+
+  // Relations
+  products      Product[]
+  subscriptions MerchantSubscription[]
+  clicks        Click[]
+  orders        Order[]
+  referrals     MerchantReferral[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("merchants")
+}
+
+enum MerchantTier {
+  STARTER // RM30
+  PRO // RM99
+  BUSINESS // RM199
+}
+
+enum MerchantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+model MerchantSubscription {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  tier   MerchantTier
+  amount Float
+  status SubStatus     @default(PENDING)
+
+  // Split
+  platformShare Float // 40-60%
+  rentPoolShare Float // 20-30%
+  floatingShare Float // 20-30%
+
+  // Billing
+  periodStart DateTime
+  periodEnd   DateTime
+  paidAt      DateTime?
+  invoiceUrl  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([merchantId])
+  @@map("merchant_subscriptions")
+}
+
+enum SubStatus {
+  PENDING
+  PAID
+  EXPIRED
+  REFUNDED
+}
+
+// ============ PRODUCT ============
+
+model Product {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  name         String
+  slug         String   @unique
+  description  String
+  price        Float
+  comparePrice Float?
+  images       String[]
+  category     String
+  stock        Int      @default(0)
+
+  // Stats
+  rating Float @default(0)
+  sold   Int   @default(0)
+  views  Int   @default(0)
+  clicks Int   @default(0)
+
+  // Flags
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+  isViral    Boolean @default(false)
+
+  // AI
+  viralScore   Int       @default(0)
+  viralTrend   String?
+  lastAnalyzed DateTime?
+
+  orders       Order[]
+  clickRecords Click[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([category])
+  @@index([isViral])
+  @@map("products")
+}
+
+// ============ AFFILIATE ============
+
+model Affiliate {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  username String @unique
+
+  // Social Media
+  tiktok    String?
+  instagram String?
+  youtube   String?
+  facebook  String?
+  followers Int?
+
+  // Tier
+  tier   AffiliateTier @default(BRONZE)
+  status AffStatus      @default(ACTIVE)
+
+  // Levels & Team
+  level1Count Int @default(0)
+  level2Count Int @default(0)
+  level3Count Int @default(0)
+
+  uplineId  String?
+  upline    Affiliate?  @relation("AffiliateHierarchy", fields: [uplineId], references: [id])
+  downlines Affiliate[] @relation("AffiliateHierarchy")
+
+  // Team Leader
+  isTeamLeader Boolean  @default(false)
+  teamMembers  String[]
+
+  // Financial
+  totalEarnings  Float @default(0)
+  balance        Float @default(0)
+  pendingBalance Float @default(0)
+
+  // Stats
+  totalClicks    Int @default(0)
+  totalSales     Int @default(0)
+  totalMerchants Int @default(0)
+
+  // KYC
+  kycVerified Boolean @default(false)
+  kycData     Json?
+
+  // Bank
+  bankName    String?
+  bankAccount String?
+  bankHolder  String?
+
+  clicks            Click[]
+  earnings          Earning[]
+  payouts           Payout[]
+  referredMerchants MerchantReferral[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([uplineId])
+  @@map("affiliates")
+}
+
+enum AffiliateTier {
+  BRONZE // 100 klik, rate RM0.005
+  SILVER // 500 klik + 3 jualan, rate RM0.01
+  GOLD // 2,000 klik + 10 jualan, rate RM0.02
+  DIAMOND // 5,000 klik + 30 jualan, rate RM0.03
+  ELITE // 10,000 klik + 100 jualan, rate RM0.05
+}
+
+enum AffStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+// ============ CLICK TRACKING ============
+
+model Click {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  // Tracking
+  shortCode         String  @unique
+  ipAddress         String
+  userAgent         String?
+  deviceFingerprint String?
+  referrer          String?
+
+  // Anti-Fraud
+  isValid    Boolean @default(true)
+  flagReason String?
+  duration   Int?
+
+  // Conversion
+  converted   Boolean   @default(false)
+  convertedAt DateTime?
+  orderId     String?
+
+  // Reward
+  rewardAmount Float        @default(0)
+  rewardStatus RewardStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  @@index([affiliateId, createdAt])
+  @@index([merchantId, createdAt])
+  @@map("clicks")
+}
+
+enum RewardStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+// ============ EARNINGS (Multi-tier) ============
+
+model Earning {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  type  EarningType
+  level Int
+
+  // Source
+  sourceType SourceType
+  sourceId   String?
+
+  // Amount
+  grossAmount Float
+  percentage  Float
+  netAmount   Float
+
+  description String?
+  metadata    Json?
+
+  status     EarningStatus @default(PENDING)
+  approvedAt DateTime?
+  paidAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([affiliateId, createdAt])
+  @@index([status])
+  @@map("earnings")
+}
+
+enum EarningType {
+  CLICK_REWARD
+  RENT_REWARD
+  SALE_COMMISSION
+  TEAM_BONUS
+}
+
+enum SourceType {
+  CLICK
+  RENT
+  SALE
+  TEAM
+}
+
+enum EarningStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+// ============ REFERRAL MERCHANT ============
+
+model MerchantReferral {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  level Int @default(1)
+
+  firstMonthRate Float @default(0.30)
+  recurringRate  Float @default(0.10)
+
+  totalEarned  Float @default(0)
+  monthsActive Int   @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([affiliateId, merchantId])
+  @@map("merchant_referrals")
+}
+
+// ============ REWARD POOL ============
+
+model RewardPool {
+  id     String   @id @default(cuid())
+  type   PoolType
+  period String
+
+  totalFund Float @default(0)
+  allocated Float @default(0)
+  reserved  Float @default(0)
+  remaining Float @default(0)
+
+  totalClicks  Int @default(0)
+  totalEarners Int @default(0)
+
+  currentRate Float @default(0.01)
+  minRate     Float @default(0.005)
+  maxRate     Float @default(0.05)
+
+  status   PoolStatus @default(ACTIVE)
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, period])
+  @@map("reward_pools")
+}
+
+enum PoolType {
+  CLICK_POOL
+  RENT_POOL
+  TEAM_POOL
+}
+
+enum PoolStatus {
+  ACTIVE
+  CLOSED
+  DISTRIBUTED
+}
+
+// ============ ORDER ============
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  // Details
+  quantity    Int
+  unitPrice   Float
+  totalAmount Float
+
+  // Commission
+  platformFee         Float @default(0)
+  merchantNet         Float @default(0)
+  affiliateId         String?
+  affiliateCommission Float @default(0)
+
+  clickId String?
+
+  // Customer
+  customerName  String
+  customerEmail String
+  customerPhone String
+
+  status OrderStatus @default(PENDING)
+
+  paymentMethod String?
+  paymentRef    String?
+  paidAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([merchantId])
+  @@index([productId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+// ============ PAYOUT ============
+
+model Payout {
+  id          String    @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  amount      Float
+  method      String
+  accountInfo String
+
+  status PayoutStatus @default(PENDING)
+
+  requestedAt DateTime  @default(now())
+  processedAt DateTime?
+  completedAt DateTime?
+
+  notes     String?
+  reference String?
+
+  @@index([affiliateId])
+  @@map("payouts")
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+// ============ FRAUD LOG ============
+
+model FraudLog {
+  id          String  @id @default(cuid())
+  affiliateId String?
+  merchantId  String?
+
+  type     String
+  severity String
+  details  Json
+
+  ipAddress String?
+  userAgent String?
+
+  action String
+
+  createdAt DateTime @default(now())
+
+  @@index([affiliateId, createdAt])
+  @@map("fraud_logs")
+}
+
+// ============ AI CACHE ============
+
+model AICache {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("ai_cache")
 }
