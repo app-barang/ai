@@ -31,7 +31,7 @@ function isTransient(error: unknown): boolean {
   );
 }
 
-export async function withDbRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+export async function withDbRetry<T>(fn: () => Promise<T>, attempts = 4): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -39,7 +39,7 @@ export async function withDbRetry<T>(fn: () => Promise<T>, attempts = 3): Promis
     } catch (error) {
       lastError = error;
       if (!isTransient(error) || i === attempts - 1) throw error;
-      const delay = 500 * 2 ** i; // 500ms, 1s
+      const delay = 1000 * 2 ** i; // 1s, 2s, 4s
       await new Promise((r) => setTimeout(r, delay));
     }
   }
