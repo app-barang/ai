@@ -39,28 +39,40 @@ export default function DaftarPage() {
     }
 
     setLoading(true);
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.error ?? "Pendaftaran gagal.");
+      if (!res.ok) {
+        setError(data.error ?? "Pendaftaran gagal.");
+        return;
+      }
+
+      // 2. Auto-login guna credentials
+      const signInResult = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        setError("Akaun dicipta, sila log masuk.");
+        router.push("/masuk");
+        return;
+      }
+
+      // 3. Redirect ke members area
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Ralat sambungan. Sila cuba lagi.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Auto login selepas daftar
-    await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    router.push(role === "AFFILIATE" ? "/dashboard" : "/");
-    router.refresh();
   };
 
   return (

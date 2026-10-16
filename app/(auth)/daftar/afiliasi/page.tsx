@@ -110,11 +110,17 @@ export default function DaftarAfiliasiPage() {
       }
 
       // Auto login
-      await signIn("credentials", {
+      const signInResult = await signIn("credentials", {
         email: form.email,
         password: form.password,
         redirect: false,
       });
+
+      if (signInResult?.error) {
+        setError("Akaun dicipta, sila log masuk.");
+        setTimeout(() => router.push("/masuk"), 1200);
+        return;
+      }
 
       setDone(true);
       setTimeout(() => {
