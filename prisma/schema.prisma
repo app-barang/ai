@@ -86,6 +86,9 @@ model Product {
   stock        Int      @default(0)
   isViral      Boolean  @default(false)
   radarScore   Int      @default(0)
+  viralScore   Int      @default(0)
+  viralTrend   String?
+  lastAnalyzed DateTime?
   marketplace  String
   externalUrl  String?
   createdAt    DateTime @default(now())
