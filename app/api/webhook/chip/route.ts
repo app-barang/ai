@@ -166,9 +166,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "OK", handled: "already_processed" });
       }
 
-      // Margin platform 10% dari jumlah; afiliator dapat 30% daripada margin
+      // Margin platform 10% dari jumlah; afiliator dapat 30% daripada margin (jika ada)
       const platformFee = round4(order.totalAmount * 0.1);
-      const affiliateCommission = round4(platformFee * 0.3);
+      const affiliateCommission = order.affiliateId ? round4(platformFee * 0.3) : 0;
       const merchantNet = round4(order.totalAmount - platformFee);
 
       await withDbRetry(() =>

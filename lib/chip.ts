@@ -16,6 +16,7 @@ export function hasChip(): boolean {
 async function chipFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${chipBaseUrl()}${path}`, {
     ...init,
+    cache: "no-store",
     headers: {
       Authorization: `Bearer ${process.env.CHIP_SECRET_KEY}`,
       "Content-Type": "application/json",
