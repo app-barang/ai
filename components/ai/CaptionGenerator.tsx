@@ -49,7 +49,7 @@ interface CaptionResult {
   hook: string;
   caption: string;
   hashtags: string[];
-  tiktokScript: { timestamp: string; action: string }[];
+  tiktokScript: string | { timestamp: string; action: string }[];
   estimatedEngagement: "High" | "Medium" | "Low";
   fallback: boolean;
 }
@@ -61,6 +61,21 @@ interface HistoryItem {
   platform: Platform;
   result: CaptionResult;
   createdAt: string;
+}
+
+/** Normalisasi script: API boleh pulangkan string atau array */
+function scriptLines(
+  script: string | { timestamp: string; action: string }[]
+): { timestamp: string; action: string }[] {
+  if (Array.isArray(script)) return script;
+  return String(script ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+      return m ? { timestamp: m[1], action: m[2] } : { timestamp: "", action: line };
+    });
 }
 
 export default function CaptionGenerator() {
@@ -435,7 +450,9 @@ export default function CaptionGenerator() {
                 </div>
                 <button
                   onClick={() => copy(
-                    result.tiktokScript.map((s) => `[${s.timestamp}] ${s.action}`).join("\n"),
+                    scriptLines(result.tiktokScript)
+                      .map((s) => (s.timestamp ? `[${s.timestamp}] ${s.action}` : s.action))
+                      .join("\n"),
                     "script"
                   )}
                   className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
@@ -445,9 +462,9 @@ export default function CaptionGenerator() {
                 </button>
               </div>
               <div className="space-y-1">
-                {result.tiktokScript.map((s, i) => (
+                {scriptLines(result.tiktokScript).map((s, i) => (
                   <div key={i} className="flex gap-3">
-                    <span className="text-amber-400 w-16 shrink-0">{s.timestamp}</span>
+                    {s.timestamp && <span className="text-amber-400 w-20 shrink-0">{s.timestamp}</span>}
                     <span className="text-gray-200">{s.action}</span>
                   </div>
                 ))}
