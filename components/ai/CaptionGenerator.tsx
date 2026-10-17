@@ -41,7 +41,8 @@ interface Product {
   name: string;
   price: number;
   slug: string;
-  radarScore: number;
+  viralScore?: number;
+  radarScore?: number;
 }
 
 interface CaptionResult {
@@ -258,7 +259,7 @@ export default function CaptionGenerator() {
                       <div className="flex items-center gap-2 text-xs text-textsec">
                         <span>{formatPrice(p.price)}</span>
                         <span className="flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5">
-                          <Zap className="h-3 w-3 text-primary" /> {p.radarScore}
+                          <Zap className="h-3 w-3 text-primary" /> {p.viralScore ?? p.radarScore ?? 0}
                         </span>
                       </div>
                     </button>
