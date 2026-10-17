@@ -21,13 +21,19 @@ export default function Footer() {
               dengan Radar AI dan komisen afiliasi sehingga 50%.
             </p>
             <div className="flex gap-3">
-              {[Facebook, Instagram, Twitter, Youtube].map((Icon, i) => (
+              {[
+                { Icon: Facebook, label: "Facebook" },
+                { Icon: Instagram, label: "Instagram" },
+                { Icon: Twitter, label: "Twitter" },
+                { Icon: Youtube, label: "YouTube" },
+              ].map(({ Icon, label }) => (
                 <a
-                  key={i}
+                  key={label}
                   href="#"
+                  aria-label={label}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 transition-colors hover:bg-primary hover:shadow-glow"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                 </a>
               ))}
             </div>
@@ -35,7 +41,7 @@ export default function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="mb-4 font-heading font-semibold">Penerokaan</h4>
+            <h3 className="mb-4 font-heading font-semibold">Penerokaan</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/produk" className="hover:text-primary">Produk Viral</Link></li>
               <li><Link href="/radar" className="hover:text-primary">Radar AI</Link></li>
@@ -45,7 +51,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-4 font-heading font-semibold">Sokongan</h4>
+            <h3 className="mb-4 font-heading font-semibold">Sokongan</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/masuk" className="hover:text-primary">Masuk</Link></li>
               <li><Link href="/daftar" className="hover:text-primary">Daftar</Link></li>
@@ -55,7 +61,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-4 font-heading font-semibold">Hubungi Kami</h4>
+            <h3 className="mb-4 font-heading font-semibold">Hubungi Kami</h3>
             <ul className="space-y-2 text-sm text-gray-400">
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" /> sokongan@barangviral.store

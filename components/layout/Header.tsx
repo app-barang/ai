@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Flame, Radar, Menu, X, TrendingUp, Sparkles, User, ChevronDown } from "lucide-react";
+import { Flame, Menu, X, TrendingUp, Sparkles, User, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -136,13 +136,6 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
-              <Link
-                href="/radar"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-4 py-2.5 font-heading text-sm font-semibold text-gray-700 hover:bg-bgalt"
-              >
-                <Radar className="h-4 w-4 text-primary" /> Radar AI
-              </Link>
               <div className="flex gap-2 pt-2">
                 <Link href="/masuk" className="btn-outline flex-1 !py-2.5 text-sm" onClick={() => setOpen(false)}>
                   Masuk
