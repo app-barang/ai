@@ -34,6 +34,7 @@ export default function DaftarAfiliatorPage() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [noSocial, setNoSocial] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -61,10 +62,7 @@ export default function DaftarAfiliatorPage() {
       if (form.username.trim().length < 3) return "Username minimum 3 aksara.";
       if (form.password.length < 8) return "Kata laluan minimum 8 aksara.";
     }
-    if (s === 1) {
-      if (!form.tiktok && !form.instagram && !form.youtube)
-        return "Isi sekurang-kurangnya satu media sosial.";
-    }
+    // Media sosial adalah PILIHAN — tiada validasi wajib.
     return null;
   };
 
@@ -203,14 +201,69 @@ export default function DaftarAfiliatorPage() {
 
               {step === 1 && (
                 <div className="space-y-4">
-                  <h2 className="font-heading text-lg font-bold">Media Sosial</h2>
-                  <p className="text-xs text-textsec">
-                    Isi sekurang-kurangnya satu. Digunakan untuk pengesahan afiliator.
+                  <h2 className="font-heading text-lg font-bold">Media Sosial (Pilihan)</h2>
+                  <p className="text-xs leading-relaxed text-textsec">
+                    Ada akaun TikTok atau Instagram? Masukkan username anda. Kalau belum ada,
+                    tak mengapa, anda boleh tambah kemudian di dalam Dashboard.
                   </p>
-                  <Field icon={Smartphone} label="TikTok" value={form.tiktok} onChange={update("tiktok")} placeholder="@username" />
-                  <Field icon={AtSign} label="Instagram" value={form.instagram} onChange={update("instagram")} placeholder="@username" />
-                  <Field icon={Smartphone} label="YouTube" value={form.youtube} onChange={update("youtube")} placeholder="URL channel" />
-                  <Field icon={Users} label="Jumlah Followers (pilihan)" type="number" value={form.followers} onChange={update("followers")} placeholder="cth: 10000" />
+
+                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                    <input
+                      type="checkbox"
+                      checked={noSocial}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setNoSocial(checked);
+                        if (checked) {
+                          setForm((f) => ({
+                            ...f,
+                            tiktok: "",
+                            instagram: "",
+                            youtube: "",
+                            followers: "",
+                          }));
+                        }
+                      }}
+                      className="mt-0.5 h-4 w-4 accent-[#FF6B00]"
+                    />
+                    <span className="text-sm font-semibold text-secondary">
+                      Saya belum ada akaun media sosial / Saya baru nak mula
+                    </span>
+                  </label>
+
+                  <Field
+                    icon={Smartphone}
+                    label="TikTok"
+                    value={form.tiktok}
+                    onChange={update("tiktok")}
+                    placeholder="cth: @ali_barangviral"
+                    disabled={noSocial}
+                  />
+                  <Field
+                    icon={AtSign}
+                    label="Instagram"
+                    value={form.instagram}
+                    onChange={update("instagram")}
+                    placeholder="cth: @ali_official"
+                    disabled={noSocial}
+                  />
+                  <Field
+                    icon={Smartphone}
+                    label="YouTube"
+                    value={form.youtube}
+                    onChange={update("youtube")}
+                    placeholder="URL channel (pilihan)"
+                    disabled={noSocial}
+                  />
+                  <Field
+                    icon={Users}
+                    label="Jumlah Followers (pilihan)"
+                    type="number"
+                    value={form.followers}
+                    onChange={update("followers")}
+                    placeholder="cth: 10000 (Kosongkan jika tiada)"
+                    disabled={noSocial}
+                  />
                 </div>
               )}
 
@@ -276,6 +329,7 @@ function Field({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: {
   icon: React.ElementType;
   label: string;
@@ -283,6 +337,7 @@ function Field({
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -294,7 +349,8 @@ function Field({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary"
+          disabled={disabled}
+          className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
     </div>
