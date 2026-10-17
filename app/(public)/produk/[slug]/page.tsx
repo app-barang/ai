@@ -46,7 +46,7 @@ export default async function ProductDetailPage({
       <nav className="mb-6 flex items-center gap-2 text-sm text-textsec">
         <Link href="/" className="hover:text-primary">Utama</Link>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/#produk" className="hover:text-primary">Produk</Link>
+        <Link href="/produk" className="hover:text-primary">Produk</Link>
         <ChevronRight className="h-3 w-3" />
         <span className="line-clamp-1 text-secondary">{product.name}</span>
       </nav>

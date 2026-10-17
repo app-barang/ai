@@ -37,7 +37,7 @@ export default function Footer() {
           <div>
             <h4 className="mb-4 font-heading font-semibold">Penerokaan</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/#produk" className="hover:text-primary">Produk Viral</Link></li>
+              <li><Link href="/produk" className="hover:text-primary">Produk Viral</Link></li>
               <li><Link href="/radar" className="hover:text-primary">Radar AI</Link></li>
               <li><Link href="/afiliator" className="hover:text-primary">Program Afiliasi</Link></li>
               <li><Link href="/dashboard" className="hover:text-primary">Dashboard</Link></li>

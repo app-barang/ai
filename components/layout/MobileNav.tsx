@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/", label: "Utama", icon: Home },
-  { href: "/#produk", label: "Produk", icon: Flame },
+  { href: "/produk", label: "Produk", icon: Flame },
   { href: "/radar", label: "Radar", icon: Radar },
   { href: "/afiliator", label: "Afiliasi", icon: LayoutDashboard },
   { href: "/masuk", label: "Akaun", icon: User },
@@ -20,7 +20,7 @@ export default function MobileNav() {
       <div className="flex items-center justify-around px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {items.map((item) => {
           const active =
-            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href) || (item.href === "/#produk" && pathname === "/");
+            item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
             <Link

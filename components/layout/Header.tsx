@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/", label: "Utama" },
-  { href: "/#produk", label: "Produk Viral" },
+  { href: "/produk", label: "Produk Viral" },
   { href: "/radar", label: "Radar AI" },
   { href: "/afiliator", label: "Afiliasi" },
 ];
