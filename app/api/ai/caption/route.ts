@@ -6,6 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  let productName = "Produk Viral";
+  let price: number | undefined;
   try {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
     const { success } = rateLimit(`caption:${ip}`, 10, 60_000);
@@ -16,7 +18,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { productName, price, tone, platform } = await req.json();
+    const body = await req.json();
+    const { tone, platform } = body;
+    productName = body.productName;
+    price = body.price;
     if (!productName || !tone || !platform) {
       return NextResponse.json(
         { error: "Sila pilih produk, tone, dan platform." },
@@ -83,9 +88,15 @@ Peraturan:
     });
   } catch (error) {
     console.error("[Caption API Error]", error);
-    return NextResponse.json(
-      { error: "AI sedang rehat. Cuba sebentar lagi." },
-      { status: 500 }
-    );
+    // Fallback mesra: jangan pulangkan 500 bila AI/key bermasalah
+    return NextResponse.json({
+      hook: `Gais, korang takkan percaya... ${productName} ni RM${price} je! 😱`,
+      caption: `Serius tak tipu, ${productName} ni memang viral! 🔥\n\nHarga RM${price} je, cepat sebelum habis!`,
+      hashtags: ["#BarangViral", "#TikTokMadeMeBuyIt", "#MurahGiler", "#WorthIt", "#ViralTikTok"],
+      tiktokScript: `[0-3s] HOOK\n[3-15s] Tunjuk produk + manfaat\n[15-25s] Banding harga\n[25-30s] CTA: "Link di bio!"`,
+      estimatedEngagement: "Medium",
+      fallback: true,
+      note: "AI sementara tidak tersedia — caption demo dipaparkan.",
+    });
   }
 }

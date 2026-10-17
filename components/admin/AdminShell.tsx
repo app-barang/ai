@@ -12,6 +12,7 @@ import {
   Banknote,
   Droplets,
   ShieldAlert,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -25,6 +26,7 @@ const nav = [
   { href: "/admin/payouts", label: "Payout", icon: Banknote },
   { href: "/admin/pool", label: "Pool", icon: Droplets },
   { href: "/admin/fraud", label: "Fraud", icon: ShieldAlert },
+  { href: "/admin/tetapan", label: "Tetapan", icon: Settings },
 ];
 
 export default function AdminShell({
