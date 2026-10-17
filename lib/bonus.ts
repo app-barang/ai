@@ -95,6 +95,20 @@ export function splitByLevels(amount: number, splits: number[]): number[] {
   return out;
 }
 
+/**
+ * Amaun Rent Pool untuk satu tier langganan.
+ * Bonus Sewa HANYA diambil dari bahagian ini — bukan harga penuh langganan.
+ * Contoh STARTER RM30 × 30% = RM9.00.
+ */
+export function rentPoolAmount(tier: MerchantTier): number {
+  return splitSubscription(tier).rentPoolShare;
+}
+
+/** Bahagi Rent Pool ikut 60/30/10 (L1/L2/L3). */
+export function rentRewardSplits(rentPool: number): number[] {
+  return splitByLevels(rentPool, RENT_LEVEL_SPLIT);
+}
+
 /** Kadar klik dinamik: Fund ÷ Total Klik, di-clamp min/max */
 export function clickRate(fund: number, totalClicks: number, min = 0.005, max = 0.05): number {
   if (totalClicks <= 0) return min;

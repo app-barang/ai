@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
 import { getChipPurchase, getPaymentRef, hasChip, savePaymentRef } from "@/lib/chip";
-import { addFund } from "@/lib/pool";
-import { round4 } from "@/lib/bonus";
+import { monthPeriod, round4, splitSubscription } from "@/lib/bonus";
+import { distributeRentRewards } from "@/lib/rent";
 import type { MerchantTier } from "@prisma/client";
 
 export const runtime = "nodejs";
@@ -86,60 +86,139 @@ export async function POST(req: NextRequest) {
 
       if (isPaid) {
         const now = new Date();
+        const period = monthPeriod(now);
         const periodEnd = new Date(now.getTime() + 30 * 864e5);
+        const refSubId = ref.subscriptionId ? String(ref.subscriptionId) : null;
 
-        // Cari subscription PENDING terbaru untuk merchant+tier
-        const pending = await withDbRetry(() =>
-          prisma.merchantSubscription.findFirst({
-            where: { merchantId, status: "PENDING" },
-            orderBy: { createdAt: "desc" },
-          })
-        );
+        // Semua kemas kini kewangan dalam SATU transaksi:
+        // langganan → split → pool → Bonus Sewa → baki afiliator.
+        const outcome = await withDbRetry(() =>
+          prisma.$transaction(
+            async (tx) => {
+              let sub = refSubId
+                ? await tx.merchantSubscription.findUnique({ where: { id: refSubId } })
+                : await tx.merchantSubscription.findFirst({
+                    where: { merchantId, status: "PENDING" },
+                    orderBy: { createdAt: "desc" },
+                  });
 
-        const sub = pending
-          ? await withDbRetry(() =>
-              prisma.merchantSubscription.update({
-                where: { id: pending.id },
-                data: { status: "PAID", paidAt: now, periodStart: now, periodEnd },
-              })
-            )
-          : await withDbRetry(() =>
-              prisma.merchantSubscription.create({
+              // Idempotency: langganan sudah diaktifkan
+              if (sub?.status === "PAID") {
+                return {
+                  already: true as const,
+                  sub,
+                  rewards: { total: 0, levels: [] },
+                };
+              }
+
+              const effectiveTier = (sub?.tier ?? tier ?? "STARTER") as MerchantTier;
+              const split = splitSubscription(effectiveTier);
+
+              const subData = {
+                tier: effectiveTier,
+                amount: split.amount,
+                status: "PAID" as const,
+                platformShare: split.platformShare,
+                rentPoolShare: split.rentPoolShare,
+                floatingShare: split.floatingShare,
+                periodStart: now,
+                periodEnd,
+                paidAt: now,
+              };
+
+              if (sub) {
+                sub = await tx.merchantSubscription.update({
+                  where: { id: sub.id },
+                  data: subData,
+                });
+              } else {
+                sub = await tx.merchantSubscription.create({
+                  data: { merchantId, ...subData },
+                });
+              }
+
+              await tx.merchant.update({
+                where: { id: merchantId },
                 data: {
-                  merchantId,
-                  tier: tier ?? "STARTER",
-                  amount: Number(purchase.purchase?.total ?? 0) / 100,
-                  status: "PAID",
-                  platformShare: 0,
-                  rentPoolShare: 0,
-                  floatingShare: 0,
-                  periodStart: now,
-                  periodEnd,
-                  paidAt: now,
-                  invoiceUrl: null,
+                  status: "ACTIVE",
+                  subscribedAt: now,
+                  expiresAt: periodEnd,
+                  tier: effectiveTier,
                 },
-              })
-            );
+              });
 
-        await withDbRetry(() =>
-          prisma.merchant.update({
-            where: { id: merchantId },
-            data: {
-              status: "ACTIVE",
-              subscribedAt: now,
-              expiresAt: periodEnd,
-              ...(tier ? { tier } : {}),
+              // --- Split 3-arah: platform / rent pool / floating fund ---
+              if (split.rentPoolShare > 0) {
+                await tx.rewardPool.upsert({
+                  where: { type_period: { type: "RENT_POOL", period } },
+                  update: {
+                    totalFund: { increment: split.rentPoolShare },
+                    remaining: { increment: split.rentPoolShare },
+                  },
+                  create: {
+                    type: "RENT_POOL",
+                    period,
+                    totalFund: split.rentPoolShare,
+                    remaining: split.rentPoolShare,
+                  },
+                });
+              }
+
+              if (split.floatingShare > 0) {
+                await tx.rewardPool.upsert({
+                  where: { type_period: { type: "CLICK_POOL", period } },
+                  update: {
+                    totalFund: { increment: split.floatingShare },
+                    remaining: { increment: split.floatingShare },
+                  },
+                  create: {
+                    type: "CLICK_POOL",
+                    period,
+                    totalFund: split.floatingShare,
+                    remaining: split.floatingShare,
+                  },
+                });
+              }
+
+              // --- Bonus Sewa: HANYA dari rentPoolShare (RM9, bukan RM30) ---
+              const rewards = await distributeRentRewards(tx, {
+                merchantId,
+                subscriptionId: sub.id,
+                rentPoolAmount: split.rentPoolShare,
+              });
+
+              if (rewards.total > 0) {
+                await tx.rewardPool.update({
+                  where: { type_period: { type: "RENT_POOL", period } },
+                  data: {
+                    allocated: { increment: rewards.total },
+                    remaining: { decrement: rewards.total },
+                  },
+                });
+              }
+
+              return { already: false as const, sub, rewards };
             },
-          })
+            { timeout: 30_000, maxWait: 10_000 }
+          )
         );
-
-        // Agih dana ke pool (guna split dari subscription)
-        if (sub.rentPoolShare > 0) await addFund("RENT_POOL", sub.rentPoolShare);
-        if (sub.floatingShare > 0) await addFund("CLICK_POOL", sub.floatingShare);
 
         await savePaymentRef(purchaseId, { ...ref, processed: true });
 
-        return NextResponse.json({ status: "OK", handled: "subscription_paid", subscriptionId: sub.id });
+        if (outcome.already) {
+          return NextResponse.json({ status: "OK", handled: "already_processed" });
+        }
+
+        return NextResponse.json({
+          status: "OK",
+          handled: "subscription_paid",
+          subscriptionId: outcome.sub.id,
+          platformShare: outcome.sub.platformShare,
+          rentPoolShare: outcome.sub.rentPoolShare,
+          floatingShare: outcome.sub.floatingShare,
+          rentDistributed: outcome.rewards.total,
+          levels: outcome.rewards.levels.length,
+        });
       }
 
       if (["expired", "cancelled", "error", "blocked"].includes(purchase.status)) {

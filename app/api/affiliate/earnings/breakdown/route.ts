@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
 import { requireAffiliate } from "@/lib/api-auth";
-import { CLICK_LEVEL_SPLIT, RENT_LEVEL_SPLIT, monthPeriod, round4 } from "@/lib/bonus";
+import { CLICK_LEVEL_SPLIT, RENT_LEVEL_SPLIT, monthPeriod, round4, splitSubscription } from "@/lib/bonus";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,10 +51,15 @@ export async function GET() {
     ]);
 
     const rate = pool?.currentRate ?? 0.01;
-    const rm = (n: number) => `RM${n.toFixed(4)}`;
+    const rm = (n: number, dp = 4) => `RM${n.toFixed(dp)}`;
 
-    const fmt = (splits: number[], rate: number) =>
-      splits.map((s, i) => `L${i + 1}: ${Math.round(s * 100)}% × ${rm(rate)} = ${rm(rate * s)}`);
+    const fmt = (splits: number[], base: number, dp = 4) =>
+      splits.map(
+        (s, i) => `L${i + 1}: ${Math.round(s * 100)}% × ${rm(base, dp)} = ${rm(base * s, dp)}`
+      );
+
+    // Contoh Bonus Sewa: Rent Pool STARTER = 30% × RM30 = RM9.00
+    const rentPoolExample = splitSubscription("STARTER").rentPoolShare;
 
     const formulas = {
       CLICK_REWARD: {
@@ -73,15 +78,15 @@ export async function GET() {
       },
       RENT_REWARD: {
         label: TYPE_LABEL.RENT_REWARD,
-        source: "Bonus Sewa Pool (30/25/20% langganan mengikut tier)",
-        rateLabel: "Berulang selagi merchant aktif",
+        source: "Rent Pool sahaja (30% STARTER / 25% PRO / 20% BUSINESS)",
+        rateLabel: `Contoh STARTER: 30% × RM30 = ${rm(rentPoolExample, 2)} Rent Pool`,
         split: RENT_LEVEL_SPLIT.map((s) => Math.round(s * 100)),
-        example: fmt(RENT_LEVEL_SPLIT, 30), // contoh langganan STARTER RM30
+        example: fmt(RENT_LEVEL_SPLIT, rentPoolExample, 2),
         levels: RENT_LEVEL_SPLIT.map((s, i) => ({
           level: i + 1,
           percent: Math.round(s * 100),
-          rate: 30,
-          amount: round4(30 * s),
+          rate: rentPoolExample,
+          amount: round4(rentPoolExample * s),
         })),
         cap: "RM2,000 / bulan",
       },

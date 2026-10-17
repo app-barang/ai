@@ -287,6 +287,7 @@ export default function AffiliateWalletPage() {
                 ].map(({ key, icon: Icon, color }) => {
                   const f = breakdown.formulas[key];
                   if (!f) return null;
+                  const dp = key === "CLICK_REWARD" ? 4 : 2;
                   return (
                     <section key={key} className="py-5 first:pt-1 last:pb-0">
                       {/* Header row */}
@@ -326,10 +327,10 @@ export default function AffiliateWalletPage() {
                               </span>
                               <div className="text-right">
                                 <p className="font-heading text-sm font-bold text-gray-900">
-                                  RM {l.amount.toFixed(4)}
+                                  RM {l.amount.toFixed(dp)}
                                 </p>
                                 <p className="text-xs text-gray-400">
-                                  {l.percent}% × RM{l.rate.toFixed(4)}
+                                  {l.percent}% × RM{l.rate.toFixed(dp)}
                                 </p>
                               </div>
                             </div>

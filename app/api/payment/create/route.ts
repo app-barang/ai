@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-auth";
-import { SUBSCRIPTION_SPLIT } from "@/lib/bonus";
+import { splitSubscription } from "@/lib/bonus";
 import { createChipPurchase, hasChip, savePaymentRef } from "@/lib/chip";
 import type { MerchantTier } from "@prisma/client";
 
@@ -47,9 +47,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Merchant tidak sepadan" }, { status: 403 });
       }
 
+      const merchantId = user.merchantId;
+
       const merchant = await withDbRetry(() =>
         prisma.merchant.findUnique({
-          where: { id: user.merchantId as string },
+          where: { id: merchantId },
           select: { businessName: true, phone: true },
         })
       );
@@ -57,13 +59,63 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Merchant tidak dijumpai" }, { status: 404 });
       }
 
-      amountRM = SUBSCRIPTION_SPLIT[tier].price;
+      const split = splitSubscription(tier);
+      const now = new Date();
+      const periodEnd = new Date(now.getTime() + 30 * 864e5);
+
+      // Simpan split 3-arah pada langganan PENDING supaya webhook
+      // mengaktifkan dengan jumlah platform/pool yang betul.
+      const pending = await withDbRetry(() =>
+        prisma.merchantSubscription.findFirst({
+          where: { merchantId, status: "PENDING" },
+          orderBy: { createdAt: "desc" },
+        })
+      );
+
+      const subData = {
+        tier,
+        amount: split.amount,
+        platformShare: split.platformShare,
+        rentPoolShare: split.rentPoolShare,
+        floatingShare: split.floatingShare,
+        periodStart: now,
+        periodEnd,
+      };
+
+      const subscription = pending
+        ? await withDbRetry(() =>
+            prisma.merchantSubscription.update({
+              where: { id: pending.id },
+              data: subData,
+            })
+          )
+        : await withDbRetry(() =>
+            prisma.merchantSubscription.create({
+              data: {
+                merchantId,
+                status: "PENDING",
+                ...subData,
+              },
+            })
+          );
+
+      amountRM = split.amount;
       description = `Langganan ${tier} — ${merchant.businessName}`;
       clientName = merchant.businessName;
       clientEmail = user.email ?? clientEmail;
       clientPhone = merchant.phone ?? undefined;
-      metadata = { type: "subscription", merchantId: user.merchantId, tier };
-      refData = { type: "subscription", merchantId: user.merchantId, tier };
+      metadata = {
+        type: "subscription",
+        merchantId,
+        tier,
+        subscriptionId: subscription.id,
+      };
+      refData = {
+        type: "subscription",
+        merchantId,
+        tier,
+        subscriptionId: subscription.id,
+      };
     } else {
       // Mode order — awam
       const order = await withDbRetry(() =>
