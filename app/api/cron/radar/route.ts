@@ -13,7 +13,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = new URL("/api/radar/analyze", req.nextUrl.origin);
-    const res = await fetch(url, { method: "POST" });
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { authorization: `Bearer ${secret}` },
+    });
     const result = await res.json().catch(() => ({}));
     return NextResponse.json({ success: res.ok, ...result });
   } catch (error) {

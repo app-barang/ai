@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
       clientName,
       clientEmail,
       clientPhone,
-      successRedirect: `${appUrl}/pembayaran/berjaya?ref=`,
-      failureRedirect: `${appUrl}/pembayaran/gagal`,
+      successRedirect: `${appUrl}/pembayaran/berjaya?type=${mode}`,
+      failureRedirect: `${appUrl}/pembayaran/gagal?type=${mode}`,
       successCallback: `${appUrl}/api/webhook/chip`,
       metadata,
     });

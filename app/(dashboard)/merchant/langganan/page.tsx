@@ -50,30 +50,6 @@ export default function MerchantSubscriptionPage() {
     load();
   }, [load]);
 
-  const subscribe = async (tier: string) => {
-    setBusy(tier);
-    setError("");
-    setMessage("");
-    try {
-      const r = await fetch("/api/merchant/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        setError(d.error ?? "Gagal melanggan.");
-        return;
-      }
-      setMessage(`Langganan ${tier} diaktifkan.`);
-      await load();
-    } catch {
-      setError("Ralat sambungan.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const upgrade = async (tier: string) => {
     setBusy(`pay-${tier}`);
     setError("");
@@ -203,7 +179,7 @@ export default function MerchantSubscriptionPage() {
                     Tier Semasa
                   </div>
                 ) : (
-                  <div className="mt-5 space-y-2">
+                  <div className="mt-5">
                     <button
                       onClick={() => upgrade(t)}
                       disabled={busy !== null}
@@ -215,13 +191,6 @@ export default function MerchantSubscriptionPage() {
                         <CreditCard className="h-3.5 w-3.5" />
                       )}
                       Bayar dengan CHIP
-                    </button>
-                    <button
-                      onClick={() => subscribe(t)}
-                      disabled={busy !== null}
-                      className="w-full rounded-xl border border-gray-200 py-2 text-[11px] font-semibold text-textsec hover:border-primary hover:text-primary"
-                    >
-                      {busy === t ? "Memproses..." : "Aktifkan (demo)"}
                     </button>
                   </div>
                 )}

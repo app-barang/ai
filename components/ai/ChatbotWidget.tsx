@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Flame } from "lucide-react";
 import type { ChatMessage } from "@/types";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,68 @@ const quickPrompts = [
   "Berapa komisen yang saya dapat?",
   "Cara tarik wang ke bank?",
 ];
+
+/** Renderer Markdown ringkas untuk balasan AI (termasuk jadual GFM). */
+function MarkdownMessage({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="mb-1.5 whitespace-pre-wrap last:mb-0">{children}</p>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-secondary">{children}</strong>
+        ),
+        em: ({ children }) => <em className="italic">{children}</em>,
+        ul: ({ children }) => (
+          <ul className="mb-1.5 list-disc space-y-0.5 pl-4 last:mb-0">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-1.5 list-decimal space-y-0.5 pl-4 last:mb-0">{children}</ol>
+        ),
+        li: ({ children }) => <li>{children}</li>,
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline"
+          >
+            {children}
+          </a>
+        ),
+        code: ({ children }) => (
+          <code className="rounded bg-black/5 px-1 py-0.5 text-[0.85em]">{children}</code>
+        ),
+        pre: ({ children }) => (
+          <pre className="my-1.5 overflow-x-auto rounded-lg bg-black/5 p-2 text-xs">{children}</pre>
+        ),
+        table: ({ children }) => (
+          <div className="my-2 overflow-x-auto">
+            <table className="w-full border-collapse text-xs">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="border border-gray-200 bg-black/5 px-2 py-1 text-left font-semibold">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border border-gray-200 px-2 py-1 align-top">{children}</td>
+        ),
+        h1: ({ children }) => <p className="mb-1 font-heading font-bold">{children}</p>,
+        h2: ({ children }) => <p className="mb-1 font-heading font-bold">{children}</p>,
+        h3: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
+        blockquote: ({ children }) => (
+          <blockquote className="my-1.5 border-l-2 border-primary/40 pl-3 text-gray-600">
+            {children}
+          </blockquote>
+        ),
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  );
+}
 
 export default function ChatbotWidget() {
   const [open, setOpen] = useState(false);
@@ -154,19 +218,6 @@ export default function ChatbotWidget() {
     setOpen(false);
   };
 
-  const renderMd = (text: string) => {
-    const parts = text.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((p, i) =>
-      p.startsWith("**") && p.endsWith("**") ? (
-        <strong key={i} className="font-semibold text-secondary">
-          {p.slice(2, -2)}
-        </strong>
-      ) : (
-        <span key={i}>{p}</span>
-      )
-    );
-  };
-
   return (
     <>
       {/* Tombol buka */}
@@ -258,7 +309,11 @@ export default function ChatbotWidget() {
                         : "rounded-tr-sm bg-gradient-brand text-white shadow-glow"
                     )}
                   >
-                    {renderMd(m.content)}
+                    {m.role === "assistant" ? (
+                      <MarkdownMessage text={m.content} />
+                    ) : (
+                      <span className="whitespace-pre-wrap">{m.content}</span>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -275,7 +330,7 @@ export default function ChatbotWidget() {
                     <Flame className="h-3.5 w-3.5 text-white animate-pulse" />
                   </span>
                   <div className="max-w-[80%] rounded-2xl rounded-tl-sm border border-gray-100 bg-bgalt px-4 py-2.5 text-sm leading-relaxed">
-                    {currentResponse && <span>{renderMd(currentResponse)}</span>}
+                    {currentResponse && <MarkdownMessage text={currentResponse} />}
                     {streaming && (
                       <span className="inline-flex items-center gap-1 ml-1">
                         <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:0ms]" />

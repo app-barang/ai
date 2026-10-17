@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { groq, hasAI } from "@/lib/ai";
 import prisma, { withDbRetry } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +20,27 @@ function mathScore(
   return { viralScore, viralTrend };
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    // Cron dibenarkan tanpa had; pengguna awam dihadkan (elak kos AI berulang)
+    const isCron =
+      !!process.env.CRON_SECRET &&
+      req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
+
+    if (!isCron) {
+      const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown";
+      const rl = rateLimit(`radar:${ip}`, 3, 5 * 60_000);
+      if (!rl.success) {
+        return NextResponse.json(
+          { error: "Terlalu banyak permintaan analisis. Cuba lagi sebentar." },
+          { status: 429 }
+        );
+      }
+    }
+
     const products = await withDbRetry(() =>
       prisma.product.findMany({
         where: { isViral: true, isActive: true },

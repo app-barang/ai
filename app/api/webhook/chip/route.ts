@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
-import { getChipPurchase, getPaymentRef, hasChip } from "@/lib/chip";
+import { getChipPurchase, getPaymentRef, hasChip, savePaymentRef } from "@/lib/chip";
 import { addFund } from "@/lib/pool";
 import { round4 } from "@/lib/bonus";
 import type { MerchantTier } from "@prisma/client";
@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
     const ref = await getPaymentRef(purchaseId);
 
     // Log berterusan (boleh disemak walaupun log Vercel luput)
-    console.log("[CHIP webhook]", { purchaseId, status: purchase.status, hasRef: !!ref });
     await prisma.aICache
       .upsert({
         where: { key: `whlog:${purchaseId}` },
@@ -72,6 +71,11 @@ export async function POST(req: NextRequest) {
 
     if (!ref) {
       return NextResponse.json({ status: "OK", note: "ref tidak dijumpai (diabaikan)" });
+    }
+
+    // Idempotency: callback berulang selepas diproses — jangan ulang kesan sampingan
+    if (ref.processed === true) {
+      return NextResponse.json({ status: "OK", handled: "already_processed" });
     }
 
     const isPaid = purchase.status === "paid";
@@ -132,6 +136,8 @@ export async function POST(req: NextRequest) {
         // Agih dana ke pool (guna split dari subscription)
         if (sub.rentPoolShare > 0) await addFund("RENT_POOL", sub.rentPoolShare);
         if (sub.floatingShare > 0) await addFund("CLICK_POOL", sub.floatingShare);
+
+        await savePaymentRef(purchaseId, { ...ref, processed: true });
 
         return NextResponse.json({ status: "OK", handled: "subscription_paid", subscriptionId: sub.id });
       }
@@ -230,6 +236,8 @@ export async function POST(req: NextRequest) {
           })
         );
       }
+
+      await savePaymentRef(purchaseId, { ...ref, processed: true });
 
       return NextResponse.json({
         status: "OK",

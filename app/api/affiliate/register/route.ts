@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma, { withDbRetry } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    if (!rateLimit(`daftar-afiliator:${ip}`, 10, 60_000).success) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percubaan. Sila cuba semula sebentar lagi." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const {
       name,

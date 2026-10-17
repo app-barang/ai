@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { groq, hasAI, SYSTEM_PROMPTS } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
 import { mockProducts } from "@/lib/mock-data";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,24 @@ async function getProductContext(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
+    // Had kadar ringkas — elak penyalahgunaan kos AI
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    const rl = rateLimit(`chat:${ip}`, 20, 60_000);
+    if (!rl.success) {
+      return Response.json(
+        { error: "Terlalu banyak permintaan. Sila cuba semula sebentar lagi." },
+        { status: 429 }
+      );
+    }
+
     const { messages, context = "buyer" } = await req.json();
+
+    if (!Array.isArray(messages)) {
+      return Response.json({ error: "Format mesej tidak sah." }, { status: 400 });
+    }
 
     if (!hasAI() || !groq) {
       return Response.json({
@@ -52,7 +70,7 @@ export async function POST(req: NextRequest) {
       model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: systemPrompt },
-        ...messages,
+        ...messages.slice(-20),
       ],
       max_tokens: 800,
       temperature: 0.8,

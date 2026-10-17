@@ -53,8 +53,19 @@ export async function POST(req: NextRequest) {
     }
 
     const [payout] = await withDbRetry(() =>
-      prisma.$transaction([
-        prisma.payout.create({
+      prisma.$transaction(async (tx) => {
+        // Kemas kini atomik: tolak baki HANYA jika masih mencukupi
+        const updated = await tx.affiliate.updateMany({
+          where: { id: affiliateId, balance: { gte: amount } },
+          data: {
+            balance: { decrement: amount },
+            pendingBalance: { increment: amount },
+          },
+        });
+        if (updated.count === 0) {
+          throw new Error("BAKI_TIDAK_MENCUKUPI");
+        }
+        const created = await tx.payout.create({
           data: {
             affiliateId,
             amount,
@@ -62,16 +73,20 @@ export async function POST(req: NextRequest) {
             accountInfo: accountInfo || affiliate.bankAccount || "-",
             status: "PENDING",
           },
-        }),
-        prisma.affiliate.update({
-          where: { id: affiliateId },
-          data: {
-            balance: { decrement: amount },
-            pendingBalance: { increment: amount },
-          },
-        }),
-      ])
-    );
+        });
+        return [created] as const;
+      })
+    ).catch((err) => {
+      if (err instanceof Error && err.message === "BAKI_TIDAK_MENCUKUPI") return [];
+      throw err;
+    });
+
+    if (!payout) {
+      return NextResponse.json(
+        { error: "Baki tidak mencukupi untuk pengeluaran ini" },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json(
       {
