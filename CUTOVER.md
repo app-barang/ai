@@ -48,6 +48,14 @@
 - [ ] Revoke token Supabase yang pernah terdedah dalam chat
 - [ ] Tukar password demo (admin/merchant/afiliator)
 
+## Status Fasa Akhir (17 Okt 2026)
+
+- ✅ `npm run build` **PASS** (BUILD_ID dijana, 29 route, middleware 50.5 kB)
+- ✅ E2E setempat (`next start`): public 10/10 200; login affiliate/merchant/admin 200; protected tanpa auth 307
+- ✅ Preview deploy Vercel **Ready**: `barangviral-store-nze6sk1g5-app-barang-1935.vercel.app`
+- ✅ Env Vercel **Preview** → DB v2 (DATABASE_URL/DIRECT_URL)
+- ⏳ Belum: tukar env Vercel **Production** ke DB v2 + `vercel deploy --prod` (cutover sebenar)
+
 ## Rollback
 
 Jika gagal: kembalikan env Vercel ke DB lama + deploy semula commit `d9f2da4` (main lama).
