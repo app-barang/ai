@@ -1,0 +1,50 @@
+{
+  "name": "BarangViral",
+  "short_name": "BarangViral",
+  "description": "Platform e-dagang + afiliasi AI Malaysia. Viral? Kami Semak Dulu.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#F9F9F9",
+  "theme_color": "#FF6B00",
+  "lang": "ms",
+  "dir": "ltr",
+  "categories": ["shopping", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Produk Viral",
+      "short_name": "Produk",
+      "url": "/produk",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard Afiliator",
+      "short_name": "Dashboard",
+      "url": "/afiliator/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
