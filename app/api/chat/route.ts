@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { groq, hasAI, SYSTEM_PROMPTS } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
-import { mockProducts } from "@/lib/mock-data";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -21,14 +20,10 @@ async function getProductContext(): Promise<string> {
         .join("\n");
     }
   } catch (error) {
-    console.warn("[Chat] DB tidak dapat dicapai, guna data demo");
+    console.warn("[Chat] DB tidak dapat dicapai");
   }
-  // Fallback: data demo
-  return mockProducts
-    .filter((p) => p.isViral)
-    .slice(0, 5)
-    .map((p) => `- ${p.name} (RM${p.price}, ⭐${p.rating}, Skor Viral ${p.radarScore})`)
-    .join("\n");
+  // Tiada fallback data demo — elak memaparkan produk palsu kepada pengguna
+  return "";
 }
 
 export async function POST(req: NextRequest) {

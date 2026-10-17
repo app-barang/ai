@@ -1,5 +1,4 @@
 ﻿import OpenAI from "openai";
-import { mockProducts } from "./mock-data";
 
 const apiKey = process.env.GROQ_API_KEY;
 const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
@@ -20,7 +19,7 @@ export function hasAI(): boolean {
   return !!apiKey && apiKey.length > 10 && !!groq;
 }
 
-/** Ambil produk viral dari DB, fallback ke data demo bila DB down */
+/** Ambil produk viral dari DB */
 async function getViralProducts() {
   try {
     const { default: prisma } = await import("@/lib/prisma");
@@ -32,12 +31,9 @@ async function getViralProducts() {
     });
     if (products.length > 0) return products;
   } catch (error) {
-    console.warn("[AI] DB tidak dapat dicapai, guna data demo");
+    console.warn("[AI] DB tidak dapat dicapai");
   }
-  return mockProducts
-    .filter((p) => p.isViral)
-    .slice(0, 5)
-    .map((p) => ({ name: p.name, price: p.price, rating: p.rating, viralScore: p.radarScore }));
+  return [];
 }
 
 export const SYSTEM_PROMPTS = {
@@ -198,12 +194,10 @@ export async function radarAnalysis(query?: string): Promise<string> {
         orderBy: { viralScore: "desc" },
       });
     } catch {
-      console.warn("[AI] DB tidak dapat dicapai, guna data demo");
+      console.warn("[AI] DB tidak dapat dicapai");
     }
     if (trending.length === 0) {
-      trending = mockProducts
-        .filter((p) => p.isViral)
-        .map((p) => ({ name: p.name, price: p.price, category: p.category, viralScore: p.radarScore }));
+      return "Tiada produk viral aktif buat masa ini. Sila tambah atau aktifkan produk terlebih dahulu.";
     }
 
     const prompt = `Anda ialah "Radar AI" BarangViral.store.
