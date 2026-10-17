@@ -12,6 +12,10 @@ import {
   XCircle,
   Landmark,
   Info,
+  MousePointerClick,
+  Store,
+  ShoppingBag,
+  Trophy,
 } from "lucide-react";
 import { formatPrice, formatDate } from "@/lib/utils";
 
@@ -31,7 +35,14 @@ interface Stats {
 interface Breakdown {
   formulas: Record<
     string,
-    { label: string; split: number[]; example: string[]; cap: string | null; rateLabel: string }
+    {
+      label: string;
+      split: number[];
+      example: string[];
+      cap: string | null;
+      rateLabel: string;
+      levels?: { level: number; percent: number; rate: number; amount: number }[];
+    }
   >;
 }
 
@@ -258,24 +269,79 @@ export default function AffiliateWalletPage() {
 
           {breakdown?.formulas && (
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-soft">
-              <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
-                <Info className="h-5 w-5 text-primary" /> Rumus Bonus
-              </h2>
-              <div className="mt-4 space-y-4 text-xs">
-                {["CLICK_REWARD", "RENT_REWARD", "SALE_COMMISSION", "TEAM_BONUS"].map((k) => {
-                  const f = breakdown.formulas[k];
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
+                    <Info className="h-5 w-5 text-primary" /> Rumus Bonus
+                  </h2>
+                  <p className="mt-1 text-xs text-textsec">
+                    4 income stream — telus, dari platform.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  { key: "CLICK_REWARD", icon: MousePointerClick, color: "#FF6B00" },
+                  { key: "RENT_REWARD", icon: Store, color: "#FF007A" },
+                  { key: "SALE_COMMISSION", icon: ShoppingBag, color: "#00C853" },
+                  { key: "TEAM_BONUS", icon: Trophy, color: "#7C3AED" },
+                ].map(({ key, icon: Icon, color }) => {
+                  const f = breakdown.formulas[key];
                   if (!f) return null;
                   return (
-                    <div key={k}>
-                      <p className="font-bold text-secondary">
-                        {f.label} <span className="font-normal text-textsec">• {f.rateLabel}</span>
-                      </p>
-                      <ul className="mt-1 space-y-0.5 text-gray-600">
-                        {f.example.map((e, i) => (
-                          <li key={i}>• {e}</li>
-                        ))}
-                      </ul>
-                      {f.cap && <p className="mt-0.5 text-primary">Cap: {f.cap}</p>}
+                    <div
+                      key={key}
+                      className="rounded-2xl border border-gray-100 bg-white p-4 transition-shadow hover:shadow-soft"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `${color}14`, color }}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-heading text-sm font-bold text-gray-900">
+                              {f.label}
+                            </p>
+                            <p className="truncate text-[11px] text-textsec">{f.rateLabel}</p>
+                          </div>
+                        </div>
+
+                        {f.cap && (
+                          <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-600">
+                            Cap {f.cap.replace(" / bulan", "")}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="my-3 h-px bg-gray-100" />
+
+                      {f.levels && f.levels.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {f.levels.map((l) => (
+                            <div key={l.level} className="flex items-end justify-between gap-3">
+                              <span className="text-xs text-gray-500">
+                                Level {l.level} ({l.percent}%)
+                              </span>
+                              <div className="text-right">
+                                <p className="font-heading text-base font-bold text-gray-900">
+                                  RM{l.amount.toFixed(4)}
+                                </p>
+                                <p className="text-[10px] text-gray-400">
+                                  {l.percent}% × RM{l.rate.toFixed(4)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs leading-relaxed text-gray-500">
+                          {f.example.join(" · ")}
+                        </p>
+                      )}
                     </div>
                   );
                 })}

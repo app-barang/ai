@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
 import { requireAffiliate } from "@/lib/api-auth";
-import { CLICK_LEVEL_SPLIT, RENT_LEVEL_SPLIT, monthPeriod } from "@/lib/bonus";
+import { CLICK_LEVEL_SPLIT, RENT_LEVEL_SPLIT, monthPeriod, round4 } from "@/lib/bonus";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +63,12 @@ export async function GET() {
         rateLabel: `Kadar semasa: ${rm(rate)} / klik`,
         split: CLICK_LEVEL_SPLIT.map((s) => Math.round(s * 100)),
         example: fmt(CLICK_LEVEL_SPLIT, rate),
+        levels: CLICK_LEVEL_SPLIT.map((s, i) => ({
+          level: i + 1,
+          percent: Math.round(s * 100),
+          rate,
+          amount: round4(rate * s),
+        })),
         cap: "RM500 / bulan",
       },
       RENT_REWARD: {
@@ -71,6 +77,12 @@ export async function GET() {
         rateLabel: "Berulang selagi merchant aktif",
         split: RENT_LEVEL_SPLIT.map((s) => Math.round(s * 100)),
         example: fmt(RENT_LEVEL_SPLIT, 30), // contoh langganan STARTER RM30
+        levels: RENT_LEVEL_SPLIT.map((s, i) => ({
+          level: i + 1,
+          percent: Math.round(s * 100),
+          rate: 30,
+          amount: round4(30 * s),
+        })),
         cap: "RM2,000 / bulan",
       },
       SALE_COMMISSION: {
@@ -79,6 +91,7 @@ export async function GET() {
         rateLabel: "30% dari margin platform",
         split: [100],
         example: ["Jualan × Margin Platform × 30%"],
+        levels: [],
         cap: null,
       },
       TEAM_BONUS: {
@@ -87,6 +100,7 @@ export async function GET() {
         rateLabel: "Coach 5–30 ahli team",
         split: [],
         example: ["RM100 (5 ahli) → RM2,000 (30+ ahli)"],
+        levels: [],
         cap: "RM2,000 / bulan",
       },
     };
