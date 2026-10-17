@@ -45,6 +45,31 @@ export async function POST(req: NextRequest) {
     const purchase = await getChipPurchase(purchaseId);
     const ref = await getPaymentRef(purchaseId);
 
+    // Log berterusan (boleh disemak walaupun log Vercel luput)
+    console.log("[CHIP webhook]", { purchaseId, status: purchase.status, hasRef: !!ref });
+    await prisma.aICache
+      .upsert({
+        where: { key: `whlog:${purchaseId}` },
+        update: {
+          value: {
+            chipStatus: purchase.status,
+            handled: ref?.type ?? "no_ref",
+            receivedAt: new Date().toISOString(),
+          } as never,
+          expiresAt: new Date(Date.now() + 30 * 864e5),
+        },
+        create: {
+          key: `whlog:${purchaseId}`,
+          value: {
+            chipStatus: purchase.status,
+            handled: ref?.type ?? "no_ref",
+            receivedAt: new Date().toISOString(),
+          } as never,
+          expiresAt: new Date(Date.now() + 30 * 864e5),
+        },
+      })
+      .catch(() => {});
+
     if (!ref) {
       return NextResponse.json({ status: "OK", note: "ref tidak dijumpai (diabaikan)" });
     }
