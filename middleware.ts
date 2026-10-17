@@ -21,7 +21,7 @@ export default withAuth(
       path.startsWith("/afiliator/tetapan")
     ) {
       if (role !== "AFFILIATE" && role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/afiliator/daftar", req.url));
+        return NextResponse.redirect(new URL("/daftar-afiliator", req.url));
       }
     }
 

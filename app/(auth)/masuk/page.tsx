@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, Flame, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Flame, AlertCircle, Loader2, Store, Users } from "lucide-react";
 
 export default function MasukPage() {
   const router = useRouter();
@@ -15,25 +15,42 @@ export default function MasukPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const routeByRole = async () => {
+    const res = await fetch("/api/auth/session", { cache: "no-store" });
+    const session = await res.json().catch(() => null);
+    const role = session?.user?.role as string | undefined;
+    if (role === "MERCHANT") router.push("/merchant/dashboard");
+    else if (role === "AFFILIATE") router.push("/afiliator/dashboard");
+    else if (role === "ADMIN") router.push("/admin");
+    else router.push("/");
+    router.refresh();
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
-      setError(res.error);
-    } else {
-      router.push("/dashboard");
-      router.refresh();
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (res?.error) {
+        setError(
+          res.error === "Pengguna tidak dijumpai"
+            ? "Akaun tidak dijumpai. Sila daftar dahulu."
+            : res.error === "Kata laluan salah"
+              ? "Kata laluan tidak tepat. Cuba lagi."
+              : "Gagal masuk. Sila cuba lagi."
+        );
+        return;
+      }
+      await routeByRole();
+    } catch {
+      setError("Sambungan bermasalah. Sila cuba lagi.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const google = () => signIn("google", { callbackUrl: "/dashboard" });
+  const google = () => signIn("google", { callbackUrl: "/selepas-login" });
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center bg-bgalt px-4 py-12">
@@ -49,7 +66,7 @@ export default function MasukPage() {
           <h1 className="mt-4 font-heading text-2xl font-extrabold">
             Selamat <span className="text-gradient">datang kembali</span>
           </h1>
-          <p className="mt-1 text-sm text-textsec">Masuk untuk teruskan ke BarangViral</p>
+          <p className="mt-1 text-sm text-textsec">Masuk untuk teruskan ke dashboard anda</p>
         </div>
 
         {error && (
@@ -73,6 +90,7 @@ export default function MasukPage() {
               />
             </div>
           </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-semibold">Kata Laluan</label>
             <div className="relative">
@@ -98,7 +116,7 @@ export default function MasukPage() {
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Masuk
+            {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
 
@@ -118,15 +136,28 @@ export default function MasukPage() {
             <path fill="#FBBC05" d="M5.2 14.4c-.25-.7-.4-1.5-.4-2.4s.15-1.7.4-2.4l-.01-.16-3.65-2.8-.12.06A12 12 0 000 12c0 1.9.5 3.8 1.4 5.4l3.8-3z"/>
             <path fill="#EA4335" d="M12 4.6c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18 1.2 15.2 0 12 0 7.4 0 3.4 2.7 1.4 6.6l3.8 3c.9-2.9 3.6-5 6.8-5z"/>
           </svg>
-          Google
+          Login dengan Google
         </button>
 
-        <p className="mt-6 text-center text-sm text-textsec">
-          Tiada akaun?{" "}
-          <Link href="/daftar" className="font-bold text-primary hover:underline">
-            Daftar sekarang
-          </Link>
-        </p>
+        <div className="mt-6 rounded-2xl bg-bgalt p-4">
+          <p className="text-center text-sm font-semibold text-secondary">
+            Belum ada akaun?
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Link
+              href="/daftar-merchant"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-secondary transition-colors hover:border-primary hover:text-primary"
+            >
+              <Store className="h-3.5 w-3.5" /> Merchant
+            </Link>
+            <Link
+              href="/daftar-afiliator"
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-bold text-secondary transition-colors hover:border-primary hover:text-primary"
+            >
+              <Users className="h-3.5 w-3.5" /> Afiliator
+            </Link>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
