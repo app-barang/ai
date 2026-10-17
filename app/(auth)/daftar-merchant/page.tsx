@@ -23,6 +23,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const steps = [
   { title: "Info Bisnes", icon: Store },
@@ -374,16 +375,26 @@ function Field({
   return (
     <div>
       <label className="mb-1.5 block text-sm font-semibold">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textsec" />
-        <input
-          type={type}
+      {type === "password" ? (
+        <PasswordInput
+          icon={Icon}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary"
+          autoComplete="new-password"
         />
-      </div>
+      ) : (
+        <div className="relative">
+          <Icon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textsec" />
+          <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt pl-11 pr-4 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary"
+          />
+        </div>
+      )}
     </div>
   );
 }

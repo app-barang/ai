@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, Flame, AlertCircle, Loader2, Store, Users } from "lucide-react";
+import { Mail, Lock, Flame, AlertCircle, Loader2, Store, Users } from "lucide-react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 const SHOW_GOOGLE = false; // sementara: isu Google 401 disabled_client
 
@@ -13,7 +14,6 @@ export default function MasukPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -95,25 +95,14 @@ export default function MasukPage() {
 
           <div>
             <label className="mb-1.5 block text-sm font-semibold">Kata Laluan</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-textsec" />
-              <input
-                type={showPw ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt pl-11 pr-11 text-sm outline-none transition-colors placeholder:text-textsec focus:border-primary"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-textsec hover:text-primary"
-                aria-label="Papar kata laluan"
-              >
-                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+            <PasswordInput
+              icon={Lock}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="••••••••"
+            />
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full">

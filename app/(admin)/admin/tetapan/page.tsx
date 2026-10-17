@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ShieldCheck, KeyRound, Loader2, AlertCircle, Check, Save, Mail, User } from "lucide-react";
+import PasswordInput from "@/components/ui/PasswordInput";
 
 export default function AdminSettingsPage() {
   const [profile, setProfile] = useState<{ name: string | null; email: string; role: string; createdAt: string } | null>(null);
@@ -126,32 +127,29 @@ export default function AdminSettingsPage() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-semibold">Kata Laluan Semasa</label>
-            <input
-              type="password"
+            <PasswordInput
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="••••••••"
-              className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt px-4 text-sm outline-none focus:border-primary"
+              autoComplete="current-password"
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-semibold">Kata Laluan Baharu</label>
-            <input
-              type="password"
+            <PasswordInput
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Min. 8 aksara"
-              className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt px-4 text-sm outline-none focus:border-primary"
+              autoComplete="new-password"
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-semibold">Sahkan Kata Laluan</label>
-            <input
-              type="password"
+            <PasswordInput
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Ulang kata laluan baharu"
-              className="h-12 w-full rounded-xl border border-gray-200 bg-bgalt px-4 text-sm outline-none focus:border-primary"
+              autoComplete="new-password"
             />
           </div>
         </div>
