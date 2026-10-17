@@ -16,8 +16,8 @@ const config: Config = {
         },
         secondary: "#1A1A1A",
         bgalt: "#F9F9F9",
-        success: "#00C853",
-        textsec: "#888888",
+        success: "#047857",
+        textsec: "#6B7280",
         viral: {
           orange: "#FF6B00",
           pink: "#FF007A",
