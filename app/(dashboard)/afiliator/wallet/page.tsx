@@ -269,18 +269,16 @@ export default function AffiliateWalletPage() {
 
           {breakdown?.formulas && (
             <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-soft">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
-                    <Info className="h-5 w-5 text-primary" /> Rumus Bonus
-                  </h2>
-                  <p className="mt-1 text-xs text-textsec">
-                    4 income stream — telus, dari platform.
-                  </p>
-                </div>
+              <div>
+                <h2 className="flex items-center gap-2 font-heading text-lg font-bold">
+                  <Info className="h-5 w-5 text-primary" /> Rumus Bonus
+                </h2>
+                <p className="mt-1 text-xs text-textsec">
+                  4 income stream — telus, dibayar oleh platform.
+                </p>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 divide-y divide-gray-100">
                 {[
                   { key: "CLICK_REWARD", icon: MousePointerClick, color: "#FF6B00" },
                   { key: "RENT_REWARD", icon: Store, color: "#FF007A" },
@@ -290,59 +288,59 @@ export default function AffiliateWalletPage() {
                   const f = breakdown.formulas[key];
                   if (!f) return null;
                   return (
-                    <div
-                      key={key}
-                      className="rounded-2xl border border-gray-100 bg-white p-4 transition-shadow hover:shadow-soft"
-                    >
-                      <div className="flex items-start justify-between gap-2">
+                    <section key={key} className="py-5 first:pt-1 last:pb-0">
+                      {/* Header row */}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2.5">
                           <span
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                             style={{ backgroundColor: `${color}14`, color }}
                           >
                             <Icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0">
-                            <p className="font-heading text-sm font-bold text-gray-900">
+                            <h3 className="font-heading text-sm font-semibold text-gray-900">
                               {f.label}
-                            </p>
-                            <p className="truncate text-[11px] text-textsec">{f.rateLabel}</p>
+                            </h3>
+                            <p className="text-[11px] text-gray-400">{f.rateLabel}</p>
                           </div>
                         </div>
 
                         {f.cap && (
-                          <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold text-gray-600">
-                            Cap {f.cap.replace(" / bulan", "")}
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                            Cap: {f.cap.replace(" / bulan", "")}
                           </span>
                         )}
                       </div>
 
-                      <div className="my-3 h-px bg-gray-100" />
-
-                      {f.levels && f.levels.length > 0 ? (
-                        <div className="space-y-2.5">
-                          {f.levels.map((l) => (
-                            <div key={l.level} className="flex items-end justify-between gap-3">
-                              <span className="text-xs text-gray-500">
+                      {/* Body rows */}
+                      <div className="mt-3 space-y-3 sm:pl-10">
+                        {f.levels && f.levels.length > 0 ? (
+                          f.levels.map((l) => (
+                            <div
+                              key={l.level}
+                              className="flex items-start justify-between gap-4"
+                            >
+                              <span className="text-sm text-gray-600">
                                 Level {l.level} ({l.percent}%)
                               </span>
                               <div className="text-right">
-                                <p className="font-heading text-base font-bold text-gray-900">
-                                  RM{l.amount.toFixed(4)}
+                                <p className="font-heading text-sm font-bold text-gray-900">
+                                  RM {l.amount.toFixed(4)}
                                 </p>
-                                <p className="text-[10px] text-gray-400">
+                                <p className="text-xs text-gray-400">
                                   {l.percent}% × RM{l.rate.toFixed(4)}
                                 </p>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs leading-relaxed text-gray-500">
-                          {f.example.join(" · ")}
-                        </p>
-                      )}
-                    </div>
+                          ))
+                        ) : (
+                          <p className="text-sm leading-relaxed text-gray-500">
+                            {f.example.join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                    </section>
                   );
                 })}
               </div>
