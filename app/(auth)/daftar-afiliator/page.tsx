@@ -279,7 +279,7 @@ export default function DaftarAfiliatorPage() {
                   <Field icon={Landmark} label="No. Akaun" value={form.bankAccount} onChange={update("bankAccount")} placeholder="1234567890" />
                   <Field icon={User} label="Nama Pemegang Akaun" value={form.bankHolder} onChange={update("bankHolder")} placeholder="Nama pada akaun bank" />
                   <div className="rounded-2xl bg-gradient-to-r from-orange-50 to-pink-50 p-4">
-                    <p className="text-sm font-bold text-primary">Komisen bermula 30%</p>
+                    <p className="text-sm font-bold text-primary">Komisen 30% Platform Fee</p>
                     <p className="mt-1 text-xs text-gray-600">
                       Kadar naik mengikut prestasi sehingga 50% + 4 income streams.
                     </p>

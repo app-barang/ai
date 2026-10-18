@@ -17,8 +17,8 @@ import {
 const merchantBenefits = [
   {
     icon: Wallet,
-    title: "100% Profit Jualan",
-    desc: "Kami tak potong sebarang komisen jualan anda. Harga penuh milik merchant — platform hanya ambil yuran langganan bulanan.",
+    title: "90–100% Profit Jualan",
+    desc: "Tanpa afiliator, 100% hasil jualan milik merchant. Jika jualan melalui afiliator, platform fee 10% — merchant tetap dapat 90%.",
   },
   {
     icon: Users,
@@ -48,8 +48,8 @@ const affiliateIncomes = [
   {
     icon: ShoppingBag,
     title: "Komisen Jualan",
-    desc: "Setiap jualan melalui link anda memberi komisen 30% daripada margin platform. Produk sebenar, bukan janji.",
-    tag: "30% margin",
+    desc: "Jualan melalui link anda memberi komisen 30% daripada Platform Fee (10% harga jualan). Jualan RM100 = RM3 komisen.",
+    tag: "30% platform fee",
   },
   {
     icon: Trophy,
@@ -99,7 +99,7 @@ const steps = [
   {
     n: "01",
     title: "Merchant daftar & langgan",
-    desc: "Pilih tier, bayar yuran bulanan, dan mula muat naik produk. 100% hasil jualan milik anda.",
+    desc: "Pilih tier, bayar yuran bulanan, dan mula muat naik produk. Tanpa afiliator, 100% hasil jualan milik anda.",
   },
   {
     n: "02",
@@ -136,7 +136,7 @@ export default function LandingPage() {
 
             <p className="max-w-xl text-base leading-relaxed text-textsec md:text-lg">
               Platform e-dagang + afiliasi #1 Malaysia.{" "}
-              <strong className="text-secondary">100% profit untuk merchant</strong>,{" "}
+              <strong className="text-secondary">90–100% profit untuk merchant</strong>,{" "}
               <strong className="text-secondary">komisen tertinggi untuk afiliator</strong>.
             </p>
 
@@ -151,7 +151,7 @@ export default function LandingPage() {
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2 text-sm text-textsec">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-success" /> Tanpa potongan jualan
+                <ShieldCheck className="h-4 w-4 text-success" /> 0% fee tanpa afiliator
               </span>
               <span className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-success" /> 3 level sah
@@ -206,7 +206,7 @@ export default function LandingPage() {
             </div>
             <div className="absolute -right-3 top-6 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-soft-lg">
               <p className="text-xs text-textsec">Profit merchant</p>
-              <p className="font-heading text-lg font-extrabold text-success">100%</p>
+              <p className="font-heading text-lg font-extrabold text-success">90–100%</p>
             </div>
           </div>
         </div>
@@ -219,10 +219,11 @@ export default function LandingPage() {
             Untuk Merchant
           </span>
           <h2 className="mt-4 font-heading text-3xl font-extrabold md:text-4xl">
-            Jual tanpa <span className="text-gradient">dipotong</span>
+            Jual dengan <span className="text-gradient">potongan telus</span>
           </h2>
           <p className="mt-3 text-textsec">
-            Anda pegang 100% hasil jualan. Kami hanya ambil yuran langganan yang kecil.
+            Tanpa afiliator, anda pegang 100% hasil jualan. Jualan melalui afiliator
+            dikenakan platform fee 10% — anda tetap dapat 90%.
           </p>
         </div>
 
@@ -283,7 +284,7 @@ export default function LandingPage() {
             Pilih tier <span className="text-gradient">anda</span>
           </h2>
           <p className="mt-3 text-textsec">
-            Semua tier dapat 100% profit jualan + akses rangkaian afiliator.
+            Semua tier dapat 90–100% hasil jualan + akses rangkaian afiliator.
           </p>
         </div>
 

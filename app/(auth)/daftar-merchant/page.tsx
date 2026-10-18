@@ -176,7 +176,7 @@ export default function DaftarMerchantPage() {
             Mula jual di <span className="text-gradient">BarangViral</span>
           </h1>
           <p className="mt-2 text-sm text-textsec">
-            3 langkah sahaja — 100% profit jualan milik anda.
+            3 langkah sahaja - 90–100% hasil jualan milik anda.
           </p>
         </div>
 

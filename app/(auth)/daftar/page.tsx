@@ -27,7 +27,7 @@ export default function DaftarChooserPage() {
             </span>
             <h2 className="mt-4 font-heading text-xl font-bold">Merchant</h2>
             <p className="mt-1 text-sm text-textsec">
-              Jual produk anda. 100% profit milik anda, akses 1,000+ afiliator.
+              Jual produk anda. 90–100% hasil jualan milik anda, akses 1,000+ afiliator.
             </p>
             <p className="mt-3 text-sm font-bold text-primary">
               Mulai RM30/bulan

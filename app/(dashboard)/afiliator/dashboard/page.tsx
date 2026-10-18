@@ -35,7 +35,7 @@ interface Stats {
 const incomeCards = [
   { key: "klik", label: "Bonus Klik", icon: MousePointerClick, color: "#FF6B00", cap: "Cap RM500" },
   { key: "sewa", label: "Bonus Sewa", icon: HandCoins, color: "#FF007A", cap: "Cap RM2,000" },
-  { key: "jualan", label: "Komisen Jualan", icon: ShoppingBag, color: "#00C853", cap: "30% margin" },
+  { key: "jualan", label: "Komisen Jualan", icon: ShoppingBag, color: "#00C853", cap: "30% platform fee" },
   { key: "team", label: "Team Bonus", icon: Trophy, color: "#7C3AED", cap: "RM100–2,000" },
 ] as const;
 
