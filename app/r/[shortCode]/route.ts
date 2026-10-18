@@ -37,18 +37,20 @@ export async function GET(
         });
 
         const target = new URL(result.redirectUrl, req.url);
-        target.searchParams.set("ref", v.affiliateUsername);
+        if (result.valid) {
+          target.searchParams.set("ref", v.affiliateUsername);
+        }
 
         const res = NextResponse.redirect(target, 302);
-        const cookieOpts = {
-          httpOnly: true,
-          sameSite: "lax" as const,
-          secure: process.env.NODE_ENV === "production",
-          maxAge: 30 * 864e5,
-          path: "/",
-        };
-        res.cookies.set("bv_aff", v.affiliateId, cookieOpts);
         if (result.valid) {
+          const cookieOpts = {
+            httpOnly: true,
+            sameSite: "lax" as const,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 30 * 864e5,
+            path: "/",
+          };
+          res.cookies.set("bv_aff", v.affiliateId, cookieOpts);
           res.cookies.set("bv_click", result.shortCode, cookieOpts);
         }
         return res;
@@ -69,20 +71,20 @@ export async function GET(
         ? `/produk/${click.product.slug}`
         : `/merchant/${click.merchantId}`;
       const target = new URL(targetPath, req.url);
-      if (click.affiliate?.username) {
+      if (click.isValid && click.affiliate?.username) {
         target.searchParams.set("ref", click.affiliate.username);
       }
 
       const res = NextResponse.redirect(target, 302);
-      const cookieOpts = {
-        httpOnly: true,
-        sameSite: "lax" as const,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 864e5,
-        path: "/",
-      };
-      res.cookies.set("bv_aff", click.affiliateId, cookieOpts);
       if (click.isValid) {
+        const cookieOpts = {
+          httpOnly: true,
+          sameSite: "lax" as const,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 30 * 864e5,
+          path: "/",
+        };
+        res.cookies.set("bv_aff", click.affiliateId, cookieOpts);
         res.cookies.set("bv_click", click.shortCode, cookieOpts);
       }
       return res;
