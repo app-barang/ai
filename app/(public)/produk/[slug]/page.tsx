@@ -1,16 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { formatNumber, formatPrice } from "@/lib/utils";
-import { Flame, Star, ShoppingBag, Store, ShieldCheck, Truck, ChevronRight } from "lucide-react";
+import BuyNowButton from "@/components/product/BuyNowButton";
+import { Flame, Star, Store, ShieldCheck, Truck, ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: { slug: string };
+  searchParams?: { ref?: string };
 }) {
   const product = await prisma.product
     .findUnique({
@@ -40,6 +44,46 @@ export default async function ProductDetailPage({
   const discount = product.comparePrice
     ? Math.round((1 - product.price / product.comparePrice) * 100)
     : 0;
+
+  // ---------- Attribution afiliator (cookie / ?ref=) ----------
+  const cookieStore = cookies();
+  const rawClick = cookieStore.get("bv_click")?.value ?? null;
+  const rawAffiliate = cookieStore.get("bv_aff")?.value ?? null;
+  const ref = typeof searchParams?.ref === "string" ? searchParams.ref.trim() : "";
+
+  let clickCode: string | undefined;
+  if (rawClick) {
+    const click = await prisma.click
+      .findUnique({
+        where: { shortCode: rawClick },
+        select: { productId: true, isValid: true },
+      })
+      .catch(() => null);
+    if (click?.isValid && click.productId === product.id) {
+      clickCode = rawClick;
+    }
+  }
+
+  let affiliateId: string | undefined;
+  if (rawAffiliate) {
+    const affiliate = await prisma.affiliate
+      .findUnique({
+        where: { id: rawAffiliate },
+        select: { status: true },
+      })
+      .catch(() => null);
+    if (affiliate?.status === "ACTIVE") affiliateId = rawAffiliate;
+  }
+
+  if (!affiliateId && !clickCode && ref) {
+    const affiliate = await prisma.affiliate
+      .findUnique({
+        where: { username: ref },
+        select: { id: true, status: true },
+      })
+      .catch(() => null);
+    if (affiliate?.status === "ACTIVE") affiliateId = affiliate.id;
+  }
 
   return (
     <div className="container-custom py-8 md:py-12">
@@ -115,13 +159,14 @@ export default async function ProductDetailPage({
             <ChevronRight className="ml-auto h-4 w-4 text-textsec" />
           </Link>
 
-          <div className="rounded-2xl border border-dashed border-gray-200 bg-bgalt p-4 text-center">
-            <ShoppingBag className="mx-auto h-5 w-5 text-primary" />
-            <p className="mt-2 text-sm font-semibold">Pembelian dalam talian akan dibuka tidak lama lagi</p>
-            <p className="mt-1 text-xs text-textsec">
-              Buat masa ini, hubungi merchant untuk pembelian. Afiliator boleh kongsi link produk ini.
-            </p>
-          </div>
+          <BuyNowButton
+            productId={product.id}
+            productName={product.name}
+            price={product.price}
+            stock={product.stock}
+            affiliateId={affiliateId}
+            clickCode={clickCode}
+          />
 
           <div className="grid grid-cols-3 gap-3 border-t border-gray-100 pt-5">
             {[

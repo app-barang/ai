@@ -92,10 +92,13 @@ export async function GET() {
       },
       SALE_COMMISSION: {
         label: TYPE_LABEL.SALE_COMMISSION,
-        source: "Komisen jualan produk",
-        rateLabel: "30% dari margin platform",
+        source: "Platform Fee 10% — hanya bila jualan melalui afiliator",
+        rateLabel: "30% dari Platform Fee (10% dari harga jualan)",
         split: [100],
-        example: ["Jualan × Margin Platform × 30%"],
+        example: [
+          "Jualan RM100 → Platform Fee RM10 → Komisen RM3",
+          "Tanpa afiliator: Platform Fee RM0 · Merchant dapat 100%",
+        ],
         levels: [],
         cap: null,
       },

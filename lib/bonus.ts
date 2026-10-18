@@ -109,6 +109,23 @@ export function rentRewardSplits(rentPool: number): number[] {
   return splitByLevels(rentPool, RENT_LEVEL_SPLIT);
 }
 
+// ---------- Komisen jualan (Closed-Loop CHIP) ----------
+export const SALE_PLATFORM_FEE_RATE = 0.1; // 10% hanya jika ada afiliator
+export const SALE_AFFILIATE_RATE = 0.3; // 30% dari platform fee
+
+/**
+ * Kira split jualan:
+ * - Tanpa afiliator: platformFee 0, merchant 100%.
+ * - Dengan afiliator: platformFee 10%, merchant 90%, afiliator 30% dari fee.
+ */
+export function saleCommissionSplit(totalAmount: number, withAffiliate: boolean) {
+  const total = round2(totalAmount);
+  const platformFee = withAffiliate ? round2(total * SALE_PLATFORM_FEE_RATE) : 0;
+  const merchantNet = round2(total - platformFee);
+  const affiliateCommission = withAffiliate ? round2(platformFee * SALE_AFFILIATE_RATE) : 0;
+  return { platformFee, merchantNet, affiliateCommission };
+}
+
 /** Kadar klik dinamik: Fund ÷ Total Klik, di-clamp min/max */
 export function clickRate(fund: number, totalClicks: number, min = 0.005, max = 0.05): number {
   if (totalClicks <= 0) return min;

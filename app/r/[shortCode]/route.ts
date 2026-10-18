@@ -16,11 +16,12 @@ export async function GET(
     const link = await prisma.aICache.findUnique({ where: { key: `link:${code}` } });
     if (link) {
       const v = link.value as {
+        affiliateId?: string;
         affiliateUsername?: string;
         productId?: string;
       };
 
-      if (v.affiliateUsername && v.productId) {
+      if (v.affiliateId && v.affiliateUsername && v.productId) {
         const ip =
           req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
           req.headers.get("x-real-ip") ||
@@ -35,18 +36,56 @@ export async function GET(
           referrer: req.headers.get("referer"),
         });
 
-        return NextResponse.redirect(new URL(result.redirectUrl, req.url), 302);
+        const target = new URL(result.redirectUrl, req.url);
+        target.searchParams.set("ref", v.affiliateUsername);
+
+        const res = NextResponse.redirect(target, 302);
+        const cookieOpts = {
+          httpOnly: true,
+          sameSite: "lax" as const,
+          secure: process.env.NODE_ENV === "production",
+          maxAge: 30 * 864e5,
+          path: "/",
+        };
+        res.cookies.set("bv_aff", v.affiliateId, cookieOpts);
+        if (result.valid) {
+          res.cookies.set("bv_click", result.shortCode, cookieOpts);
+        }
+        return res;
       }
     }
 
     // 2) Fallback: rekod klik lama (jika ada)
     const click = await prisma.click.findUnique({
       where: { shortCode: code },
-      include: { product: true, merchant: true },
+      include: {
+        product: true,
+        merchant: true,
+        affiliate: { select: { username: true } },
+      },
     });
     if (click) {
-      const target = click.product ? `/produk/${click.product.slug}` : `/merchant/${click.merchantId}`;
-      return NextResponse.redirect(new URL(target, req.url), 302);
+      const targetPath = click.product
+        ? `/produk/${click.product.slug}`
+        : `/merchant/${click.merchantId}`;
+      const target = new URL(targetPath, req.url);
+      if (click.affiliate?.username) {
+        target.searchParams.set("ref", click.affiliate.username);
+      }
+
+      const res = NextResponse.redirect(target, 302);
+      const cookieOpts = {
+        httpOnly: true,
+        sameSite: "lax" as const,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 30 * 864e5,
+        path: "/",
+      };
+      res.cookies.set("bv_aff", click.affiliateId, cookieOpts);
+      if (click.isValid) {
+        res.cookies.set("bv_click", click.shortCode, cookieOpts);
+      }
+      return res;
     }
 
     return NextResponse.redirect(new URL("/", req.url), 302);

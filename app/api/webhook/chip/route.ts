@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma, { withDbRetry } from "@/lib/prisma";
 import { getChipPurchase, getPaymentRef, hasChip, savePaymentRef } from "@/lib/chip";
-import { monthPeriod, round4, splitSubscription } from "@/lib/bonus";
+import { monthPeriod, saleCommissionSplit, splitSubscription } from "@/lib/bonus";
 import { distributeRentRewards } from "@/lib/rent";
 import type { MerchantTier } from "@prisma/client";
 
@@ -246,83 +246,109 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "OK", handled: "noop", chipStatus: purchase.status });
       }
 
-      const order = await withDbRetry(() => prisma.order.findUnique({ where: { id: orderId } }));
-      if (!order || order.status !== "PENDING") {
-        return NextResponse.json({ status: "OK", handled: "already_processed" });
-      }
+      const outcome = await withDbRetry(() =>
+        prisma.$transaction(
+          async (tx) => {
+            const order = await tx.order.findUnique({ where: { id: orderId } });
+            if (!order || order.status !== "PENDING") {
+              return { already: true as const };
+            }
 
-      // Margin platform 10% dari jumlah; afiliator dapat 30% daripada margin (jika ada)
-      const platformFee = round4(order.totalAmount * 0.1);
-      const affiliateCommission = order.affiliateId ? round4(platformFee * 0.3) : 0;
-      const merchantNet = round4(order.totalAmount - platformFee);
+            // Guna split yang disimpan semasa order dicipta.
+            // Fallback untuk order lama yang belum mempunyai split.
+            const hasStoredSplit = order.platformFee > 0 || order.merchantNet > 0;
+            const split = hasStoredSplit
+              ? {
+                  platformFee: order.platformFee,
+                  merchantNet: order.merchantNet,
+                  affiliateCommission: order.affiliateId
+                    ? order.affiliateCommission
+                    : 0,
+                }
+              : saleCommissionSplit(order.totalAmount, !!order.affiliateId);
 
-      await withDbRetry(() =>
-        prisma.order.update({
-          where: { id: orderId },
-          data: {
-            status: "PAID",
-            paidAt: new Date(),
-            paymentMethod: "chip",
-            paymentRef: purchaseId,
-            platformFee,
-            merchantNet,
-            affiliateCommission,
+            const paidAt = new Date();
+
+            await tx.order.update({
+              where: { id: orderId },
+              data: {
+                status: "PAID",
+                paidAt,
+                paymentMethod: "chip",
+                paymentRef: purchaseId,
+                platformFee: split.platformFee,
+                merchantNet: split.merchantNet,
+                affiliateCommission: split.affiliateCommission,
+              },
+            });
+
+            await tx.merchant.update({
+              where: { id: order.merchantId },
+              data: {
+                totalSales: { increment: order.quantity },
+                totalRevenue: { increment: order.totalAmount },
+              },
+            });
+
+            await tx.product.update({
+              where: { id: order.productId },
+              data: { sold: { increment: order.quantity } },
+            });
+
+            // Tutup gelung klik afiliator → order → pembayaran
+            if (order.clickId) {
+              await tx.click.updateMany({
+                where: { id: order.clickId },
+                data: { converted: true, convertedAt: paidAt, orderId },
+              });
+            }
+
+            if (order.affiliateId && split.affiliateCommission > 0) {
+              await tx.earning.create({
+                data: {
+                  affiliateId: order.affiliateId,
+                  type: "SALE_COMMISSION",
+                  level: 1,
+                  sourceType: "SALE",
+                  sourceId: orderId,
+                  grossAmount: split.platformFee,
+                  percentage: 0.3,
+                  netAmount: split.affiliateCommission,
+                  description: `Komisen jualan ${order.orderNumber}`,
+                  status: "PENDING",
+                },
+              });
+
+              await tx.affiliate.update({
+                where: { id: order.affiliateId },
+                data: {
+                  balance: { increment: split.affiliateCommission },
+                  pendingBalance: { increment: split.affiliateCommission },
+                  totalEarnings: { increment: split.affiliateCommission },
+                  totalSales: { increment: order.quantity },
+                },
+              });
+            }
+
+            return { already: false as const, split };
           },
-        })
+          { timeout: 30_000, maxWait: 10_000 }
+        )
       );
-
-      await withDbRetry(() =>
-        prisma.merchant.update({
-          where: { id: order.merchantId },
-          data: {
-            totalSales: { increment: order.quantity },
-            totalRevenue: { increment: order.totalAmount },
-          },
-        })
-      );
-      await withDbRetry(() =>
-        prisma.product.update({
-          where: { id: order.productId },
-          data: { sold: { increment: order.quantity } },
-        })
-      );
-
-      if (order.affiliateId) {
-        await withDbRetry(() =>
-          prisma.earning.create({
-            data: {
-              affiliateId: order.affiliateId as string,
-              type: "SALE_COMMISSION",
-              level: 1,
-              sourceType: "SALE",
-              sourceId: orderId,
-              grossAmount: platformFee,
-              percentage: 0.3,
-              netAmount: affiliateCommission,
-              description: `Komisen jualan ${order.orderNumber}`,
-              status: "PENDING",
-            },
-          })
-        );
-        await withDbRetry(() =>
-          prisma.affiliate.update({
-            where: { id: order.affiliateId as string },
-            data: {
-              balance: { increment: affiliateCommission },
-              pendingBalance: { increment: affiliateCommission },
-              totalEarnings: { increment: affiliateCommission },
-            },
-          })
-        );
-      }
 
       await savePaymentRef(purchaseId, { ...ref, processed: true });
+
+      if (outcome.already) {
+        return NextResponse.json({ status: "OK", handled: "already_processed" });
+      }
 
       return NextResponse.json({
         status: "OK",
         handled: "order_paid",
         orderId,
-        affiliateCommission,
+        platformFee: outcome.split.platformFee,
+        merchantNet: outcome.split.merchantNet,
+        affiliateCommission: outcome.split.affiliateCommission,
       });
     }
 
